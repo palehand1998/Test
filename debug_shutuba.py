@@ -37,6 +37,17 @@ def main():
     print("HorseList件数:", html.count("HorseList"))
 
     from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    print("ページタイトル:", soup.title.get_text(strip=True) if soup.title else None)
+    print("テーブル一覧:")
+    for table in soup.find_all("table")[:10]:
+        print("  class:", table.get("class"))
+
+    print("馬名らしいリンク:")
+    for a in soup.select('a[href*="/horse/"]')[:10]:
+        print(" ", a.get_text(strip=True), a.get("href"))
     
     race, horses = parse_shutuba(html, args.race_id)
 
