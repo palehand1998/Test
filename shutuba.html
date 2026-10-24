@@ -8,9 +8,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="出馬表">
+<meta name="apple-mobile-web-app-title" content="指数競馬">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="nav.css">
+<script src="nav.js" defer></script>
 <title>出馬表 | 過去3走</title>
 <style>
 :root{--bg:#10131c;--panel:#181c28;--panel2:#1f2433;--line:#2a3043;--text:#ebe8e2;--mute:#8d93a6;
@@ -22,7 +24,7 @@ body{padding-top:env(safe-area-inset-top);min-height:100dvh}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top);background:var(--bg);z-index:20}
 h1,h2,p{margin:0}
 button{font:inherit;color:inherit}
-.wrap{max-width:560px;margin:0 auto;padding:0 14px calc(40px + env(safe-area-inset-bottom))}
+.wrap{max-width:560px;margin:0 auto;padding:0 14px calc(28px + var(--tab-h,0px))}
 [hidden]{display:none!important}
 
 .top{display:flex;align-items:center;justify-content:space-between;padding:10px 2px 12px}
@@ -120,6 +122,11 @@ button{font:inherit;color:inherit}
   </div>
   <div id="app"><div class="list"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div></div>
 </div>
+
+<nav class="tabbar" aria-label="メインメニュー"><div class="tabbar-in">
+  <a class="tab" href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l5-5 4 3 8-9"/><path d="M15 6h5v5"/></svg><span>予想</span></a>
+  <a class="tab" href="shutuba.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg><span>出馬表</span></a>
+</div></nav>
 
 <script>
 const DATA_URL = "data/raw_shutuba_with_history.json";

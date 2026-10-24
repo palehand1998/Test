@@ -1,7 +1,7 @@
 {
-  "name": "出馬表 × 過去3走",
-  "short_name": "出馬表",
-  "start_url": "./shutuba.html",
+  "name": "指数競馬",
+  "short_name": "指数競馬",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#10131c",
