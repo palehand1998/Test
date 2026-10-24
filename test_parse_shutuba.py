@@ -102,5 +102,50 @@ class TestParseShutuba(unittest.TestCase):
         self.assertEqual(result[0]["body_weight_diff"], 2)
 
 
+    def test_select_history_excludes_target_and_future_races(self):
+        from fetch_shutuba_with_history import select_history
+
+        rows = [
+            {"race_id": "OLD001", "date": "2025-05-01"},
+            {"race_id": "TARGET01", "date": "2025-05-10"},
+            {"race_id": "FUTURE01", "date": "2025-05-15"},
+            {"race_id": "OLD002", "date": "2025-04-20"},
+        ]
+
+        result = select_history(
+            rows=rows,
+            race_id="TARGET01",
+            race_date="2025-05-10",
+            n=3,
+        )
+
+        self.assertEqual(
+            [row["race_id"] for row in result],
+            ["OLD001", "OLD002"],
+        )
+
+    def test_select_history_limits_number_of_results(self):
+        from fetch_shutuba_with_history import select_history
+
+        rows = [
+            {"race_id": "RACE001", "date": "2025-05-01"},
+            {"race_id": "RACE002", "date": "2025-04-20"},
+            {"race_id": "RACE003", "date": "2025-04-10"},
+        ]
+
+        result = select_history(
+            rows=rows,
+            race_id="TARGET01",
+            race_date="2025-05-10",
+            n=2,
+        )
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(
+            [row["race_id"] for row in result],
+            ["RACE001", "RACE002"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
