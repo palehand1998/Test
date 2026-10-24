@@ -5,6 +5,7 @@ from fetch_shutuba_with_history import (
     Fetcher,
     SHUTUBA_URL,
     parse_shutuba,
+    parse_history,
 )
 
 
