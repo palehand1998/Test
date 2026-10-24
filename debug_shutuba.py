@@ -1,22 +1,16 @@
 #!/usr/bin/env python3
-"""Netkeibaの出馬表HTMLを確認するデバッグ用スクリプト"""
+"""Netkeiba出馬表のHTML構造を調べるデバッグ用スクリプト"""
 
 import argparse
 import logging
 
 from bs4 import BeautifulSoup
 
-from fetch_shutuba_with_history import (
-    Fetcher,
-    SHUTUBA_URL,
-    parse_shutuba,
-)
+from fetch_shutuba_with_history import Fetcher, SHUTUBA_URL
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Netkeibaの出馬表HTMLを確認する"
-    )
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "--race-id",
         default="202606050811",
@@ -35,81 +29,64 @@ def main():
     )
 
     url = SHUTUBA_URL.format(race_id=args.race_id)
-
     print("出馬表を取得しています...", flush=True)
+
     html = fetcher.get(url)
-
-    # 取得できたHTMLの基本情報
-    print("\n=== HTMLの基本情報 ===", flush=True)
-    print("URL:", url)
-    print("HTML文字数:", len(html))
-    print("HTML冒頭:", repr(html[:500]))
-    print("HorseList件数:", html.count("HorseList"))
-
     soup = BeautifulSoup(html, "html.parser")
 
+    print("\n=== ページ情報 ===")
+    print("URL:", url)
+    print("HTML文字数:", len(html))
     print(
-        "ページタイトル:",
+        "タイトル:",
         soup.title.get_text(strip=True) if soup.title else None,
     )
 
-    # テーブルの構造を調べる
-    print("\n=== テーブル一覧 ===", flush=True)
-
-    for table in soup.find_all("table")[:10]:
-        print("class:", table.get("class"))
-
-    # 出馬表テーブルを探す
     table = soup.select_one("table.Shutuba_Table")
 
-    if table:
-        print("\n=== 出馬表テーブルの先頭部分 ===", flush=True)
-        print(table.get_text(" ", strip=True)[:2000])
-
-        print("\n=== 最初の3行のHTML ===", flush=True)
-
-        for tr in table.find_all("tr")[:3]:
-            print(tr.prettify()[:3000])
-            print("--- 行の区切り ---")
+    if not table:
+        print("Shutuba_Table が見つかりません")
     else:
-        print("\nShutuba_Table が見つかりません", flush=True)
+        rows = table.find_all("tr")
+        print("\n=== 出馬表テーブル ===")
+        print("行数:", len(rows))
 
-    # 馬のリンクを調べる
-    print("\n=== 馬名らしいリンク ===", flush=True)
+        for i, tr in enumerate(rows[:12]):
+            print(f"\n--- 行 {i + 1} ---")
+            print("class:", tr.get("class"))
+            print("テキスト:", tr.get_text(" | ", strip=True)[:500])
 
-    horse_links = soup.select('a[href*="/horse/"]')
+            for a in tr.find_all("a", href=True)[:5]:
+                print(
+                    "リンク:",
+                    repr(a.get_text(strip=True)),
+                    a["href"],
+                )
 
-    for a in horse_links[:10]:
-        print(
-            "名前:", a.get_text(strip=True),
-            "| URL:", a.get("href"),
-        )
+        print("\n=== テーブル末尾のHTML ===")
+        print(table.prettify()[-5000:])
 
-    print("馬リンク件数:", len(horse_links))
+    print("\n=== HTML内の馬データ関連キーワード ===")
+    for keyword in [
+        "HorseList",
+        "HorseInfo",
+        "horse_id",
+        "horseId",
+        "出走馬",
+        "出馬表",
+        "RaceTable",
+    ]:
+        print(f"{keyword}: {html.count(keyword)}件")
 
-    # 既存の解析処理の結果も確認
-    print("\n=== 現在の解析処理の結果 ===", flush=True)
-
-    race, horses = parse_shutuba(html, args.race_id)
-
-    print("レースID:", race.get("race_id"))
-    print("開催日:", race.get("date"))
-    print("レース名:", race.get("name"))
-    print("コース:", race.get("surface"), race.get("distance_m"))
-    print("取得馬数:", len(horses))
-
-    for horse in horses[:5]:
-        print(
-            "馬番:", horse.get("horse_no"),
-            "| 馬名:", horse.get("horse_name"),
-            "| 馬ID:", horse.get("horse_id"),
-        )
-
-    if not horses:
-        raise RuntimeError(
-            "出走馬を取得できませんでした。"
-            "上記のHTML構造を確認してください。"
-        )
+    print("\n=== JSONらしいデータの手がかり ===")
+    for script in soup.find_all("script"):
+        content = script.string or script.get_text()
+        if any(
+            keyword in content
+            for keyword in ["horse_id", "horseId", "HorseList"]
+        ):
+            print(content[:1500])
+            print("---")
 
 
 if __name__ == "__main__":
