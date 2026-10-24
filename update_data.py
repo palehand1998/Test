@@ -11,7 +11,6 @@ def main():
             return
 
         print("Gemini クライアントを初期化中 (AQキー対応)...")
-        # client = genai.Client(api_key=api_key) の代わりに環境変数を直接読ませる形でも確実に初期化
         client = genai.Client(api_key=api_key)
 
         prompt = """
@@ -46,9 +45,10 @@ Markdownのコードブロック（```json ... ```）や、前後の挨拶・解
 }
 """
 
-        print("Gemini APIにリクエストを送信中 (gemini-2.5-flash)...")
+        print("Gemini APIにリクエストを送信中 (gemini-3.8-flash)...")
+        # ★ここで最新のモデルを指定します
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.8-flash',
             contents=prompt,
         )
         
