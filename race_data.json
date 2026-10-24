@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "updated_at": "2026-10-24T14:30:00+09:00",
+  "races": [
+    {
+      "id": "tokyo11",
+      "label": "東京11R",
+      "name": "秋晴ステークス",
+      "grade": "G2",
+      "start_time": "15:45",
+      "condition": {
+        "surface": "芝",
+        "distance": 1600,
+        "going": "良",
+        "weather": "晴",
+        "course": "左回り",
+        "class": "3歳以上オープン"
+      },
+      "horses": [
+        { "num": 4, "name": "ソラノカケラ", "jockey": "ルメール", "score": 94.2 },
+        { "num": 6, "name": "ミッドナイトアリア", "jockey": "川田将雅", "score": 91.8 },
+        { "num": 2, "name": "ブリリアントロード", "jockey": "戸崎圭太", "score": 88.5 },
+        { "num": 5, "name": "キングズレガシー", "jockey": "横山武史", "score": 84.1 },
+        { "num": 1, "name": "ハルカゼノユメ", "jockey": "坂井瑠星", "score": 79.6 },
+        { "num": 3, "name": "ローズクォーツ", "jockey": "松山弘平", "score": 74.3 }
+      ],
+      "analysis": {
+        "summary": "先行力と上がり性能を兼ね備えた④ソラノカケラが指数トップ。②⑥を相手に堅実な構成を推奨します。",
+        "points": [
+          { "title": "展開予想", "text": "逃げ候補は⑤と①。平均ペースで先行〜好位が有利です。" },
+          { "title": "注目馬", "text": "④は直近3走すべて上がり3F上位。東京芝1600mの実績も高水準です。" },
+          { "title": "懸念点", "text": "②は休み明け初戦で仕上がりに不安が残ります。", "warn": true }
+        ]
+      },
+      "bets": [
+        {
+          "type": "馬連", "tag": "本線", "hero": true,
+          "note": "④を軸に、②⑥へ厚めに配分します。",
+          "combos": [ { "nums": [4, 6], "amount": 1500 }, { "nums": [4, 2], "amount": 1000 } ]
+        },
+        {
+          "type": "3連複", "tag": "妙味",
+          "note": "上位3頭を軸に、⑤へ流して配当を狙います。",
+          "combos": [ { "nums": [4, 6, 2], "amount": 600 }, { "nums": [4, 6, 5], "amount": 400 } ]
+        }
+      ]
+    },
+    {
+      "id": "nakayama11",
+      "label": "中山11R",
+      "name": "アルカディアカップ",
+      "grade": "G3",
+      "start_time": "15:25",
+      "condition": {
+        "surface": "芝",
+        "distance": 2000,
+        "going": "稍重",
+        "weather": "曇",
+        "course": "右回り",
+        "class": "3歳以上オープン"
+      },
+      "horses": [
+        { "num": 3, "name": "ストームブレイカー", "jockey": "武豊", "score": 92.6 },
+        { "num": 1, "name": "ヴェールオブナイト", "jockey": "レーン", "score": 89.4 },
+        { "num": 5, "name": "カゼノトビラ", "jockey": "田辺裕信", "score": 85.7 },
+        { "num": 2, "name": "ゴールデンシーズン", "jockey": "福永祐一", "score": 80.2 },
+        { "num": 6, "name": "アイボリーコースト", "jockey": "石橋脩", "score": 76.8 },
+        { "num": 4, "name": "ナナイロノウタ", "jockey": "三浦皇成", "score": 71.5 }
+      ],
+      "analysis": {
+        "summary": "稍重の中山2000mはタフな持久力勝負。スタミナ指数で上回る③を中心視します。",
+        "points": [
+          { "title": "展開予想", "text": "ペースが落ち着けば先行勢が残りやすい設計です。" },
+          { "title": "懸念点", "text": "⑤は右回りでの勝ち鞍がなく、コース替わりが課題。", "warn": true }
+        ]
+      },
+      "bets": [
+        {
+          "type": "馬連", "tag": "本線", "hero": true,
+          "note": "道悪実績の高い③を軸にします。",
+          "combos": [ { "nums": [3, 1], "amount": 1800 }, { "nums": [3, 5], "amount": 900 } ]
+        }
+      ]
+    }
+  ]
+}
