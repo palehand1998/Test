@@ -1,6 +1,3 @@
-# scrape_results.py
-from __future__ import annotations
-
 import argparse
 import json
 import re
@@ -8,423 +5,390 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 import requests
 from bs4 import BeautifulSoup
 
+
+OUTPUT_FILE = Path("data/raw_race_results.json")
 BASE_URL = "https://race.netkeiba.com/race/result.html"
-OUTPUT = Path("data/raw_race_results.json")
-USER_AGENT = (
-    "Mozilla/5.0 (compatible; RaceDataResearch/1.0; "
-    "+https://github.com/)"
-)
-REQUEST_DELAY_SECONDS = 2.0
-TIMEOUT_SECONDS = 20
 
 
-def clean(node) -> str:
-    return node.get_text(" ", strip=True) if node else ""
+def clean_text(element):
+    if element is None:
+        return ""
+    return element.get_text(" ", strip=True)
 
 
-def first_text(soup, selectors: list[str]) -> str:
-    for selector in selectors:
-        node = soup.select_one(selector)
-        if node:
-            value = clean(node)
-            if value:
-                return value
-    return ""
+def to_int(value):
+    value = (value or "").strip()
+    return int(value) if value.isdigit() else None
 
 
-def parse_number(value: str):
-    """数値に変換できる場合のみ変換。未取得・特殊表記は None。"""
-    value = value.strip().replace(",", "")
-    if not value or value in {"-", "--", "取消", "除外", "中止"}:
-        return None
+def to_float(value):
+    value = (value or "").strip().replace(",", "")
     try:
-        return float(value) if "." in value else int(value)
-    except ValueError:
+        return float(value)
+    except (TypeError, ValueError):
         return None
 
 
-def parse_weight(value: str):
-    """例: '504(+4)' -> (504, 4)"""
-    match = re.search(r"(\d+)\s*\(([+-]?\d+)\)", value)
-    if match:
-        return int(match.group(1)), int(match.group(2))
-    match = re.search(r"\b(\d+)\b", value)
-    return (int(match.group(1)), None) if match else (None, None)
-
-
-def get_page(race_id: str) -> BeautifulSoup:
-    url = f"{BASE_URL}?race_id={race_id}"
-    headers = {
-        "User-Agent": USER_AGENT,
-        "Accept-Language": "ja,en-US;q=0.8,en;q=0.6",
-    }
-
-    # 連続アクセスを避ける。リトライによる連続取得もしない。
-    time.sleep(REQUEST_DELAY_SECONDS)
-
-    response = requests.get(url, headers=headers, timeout=TIMEOUT_SECONDS)
+def fetch_html(race_id):
+    url = BASE_URL
+    response = requests.get(
+        url,
+        params={"race_id": race_id},
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (compatible; RaceResultsResearch/1.0)"
+            )
+        },
+        timeout=30,
+    )
     response.raise_for_status()
 
-    if not response.encoding or response.encoding.lower() == "iso-8859-1":
-        response.encoding = response.apparent_encoding or "utf-8"
+    # Netkeibaのページによって文字コードが異なる場合に備える
+    response.encoding = response.apparent_encoding or "euc-jp"
+    html = response.text
 
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    # エラーページや空ページを結果ページと誤認しない。
-    if not soup.select_one(
-        "#All_Result_Table, table.ResultTable01, table.RaceTable01"
-    ):
-        raise ValueError(
-            "結果テーブルが見つかりません。HTML構造変更・アクセス制限・"
-            "レースIDを確認してください。"
+    if "All_Result_Table" not in html and "全着順" not in html:
+        raise RuntimeError(
+            "結果テーブルが見つかりません。"
+            "ページ構造、アクセス制限、レースIDを確認してください。"
         )
-    return soup
+
+    return html
 
 
-def parse_race_info(soup: BeautifulSoup, race_id: str) -> dict:
-    title = first_text(soup, ["h1.RaceName", ".RaceName", "title"])
-    data1 = first_text(soup, [".RaceData01"])
-    data2 = first_text(soup, [".RaceData02"])
-    combined = f"{data1} {data2}"
+def parse_race_info(soup, race_id):
+    title = clean_text(soup.select_one(".RaceName"))
+    if not title:
+        title = clean_text(soup.title)
 
-    distance_match = re.search(r"(芝|ダート?|障害)\s*(\d{3,4})m", combined)
-    start_match = re.search(r"発走\s*[:：]?\s*(\d{1,2}:\d{2})", combined)
-    weather_match = re.search(r"天候\s*[:：]\s*([^\s/]+)", combined)
-    condition_match = re.search(
-        r"(?:芝|ダート?|ダート|馬場)\s*[:：]\s*(良|稍重|重|不良)",
-        combined,
-    )
-
-    surface = None
-    distance_m = None
-    if distance_match:
-        surface = distance_match.group(1)
-        distance_m = int(distance_match.group(2))
-
-    race_number = int(race_id[-2:])
-
-    return {
+    info = {
         "race_id": race_id,
-        "name": title or None,
-        "date": None,  # ページ内の開催日表示を確認できた場合に追加
-        "venue": None,  # ページ内の競馬場表示を確認できた場合に追加
-        "race_number": race_number,
-        "start_time": start_match.group(1) if start_match else None,
-        "grade": None,
-        "surface": surface,
-        "distance_m": distance_m,
-        "course_direction": None,
-        "course_layout": None,
-        "weather": weather_match.group(1) if weather_match else None,
-        "track_condition": condition_match.group(1) if condition_match else None,
-        "number_of_runners": None,
-        "race_data_text": [x for x in (data1, data2) if x],
+        "race_name": title,
+        "url": f"{BASE_URL}?race_id={race_id}",
     }
 
+    # レース条件などの情報を可能な範囲で取得
+    for selector in (
+        ".RaceData01",
+        ".RaceData02",
+        ".RaceList_NameBox",
+    ):
+        element = soup.select_one(selector)
+        if element:
+            info[selector.lstrip(".")] = clean_text(element)
 
-def parse_results(soup: BeautifulSoup) -> list[dict]:
-    table = soup.select_one(
-        "#All_Result_Table, table.ResultTable01, table.RaceTable01"
-    )
-    if not table:
-        raise ValueError("着順テーブルが見つかりません")
+    return info
 
-    headers = [clean(th) for th in table.select("thead th")]
-    if not headers:
-        header_row = table.select_one("tr.Header")
-        headers = [clean(th) for th in header_row.select("th")] if header_row else []
 
-    def col_index(pattern: str):
-        for i, header in enumerate(headers):
-            if re.search(pattern, header):
-                return i
-        return None
+def parse_horses(soup):
+    table = soup.select_one("table#All_Result_Table")
+    if table is None:
+        # クラス名が変わった場合の予備検索
+        table = soup.find(
+            "table", attrs={"summary": re.compile("全着順")}
+        )
 
-    columns = {
-        "finish": col_index(r"着順"),
-        "frame": col_index(r"枠"),
-        "number": col_index(r"馬番"),
-        "horse": col_index(r"馬名"),
-        "sex_age": col_index(r"性齢"),
-        "weight": col_index(r"斤量"),
-        "jockey": col_index(r"騎手"),
-        "time": col_index(r"タイム"),
-        "margin": col_index(r"着差"),
-        "popularity": col_index(r"人気"),
-        "odds": col_index(r"単勝オッズ|オッズ"),
-        "last3f": col_index(r"後?3F"),
-        "passing": col_index(r"コーナー通過順"),
-        "trainer": col_index(r"厩舎"),
-        "body_weight": col_index(r"馬体重"),
-    }
+    if table is None:
+        raise RuntimeError("全着順テーブルを検出できません。")
 
-    rows = table.select("tbody tr.HorseList")
-    if not rows:
-        rows = table.select("tbody tr")
+    horses = []
 
-    results = []
-    for row in rows:
-        cells = row.select("td")
+    for row in table.select("tr.HorseList"):
+        cells = row.find_all("td")
         if not cells:
             continue
 
-        def cell(key: str) -> str:
-            idx = columns.get(key)
-            return clean(cells[idx]) if idx is not None and idx < len(cells) else ""
+        rank_element = row.select_one("td.Result_Num .Rank")
+        if rank_element is None:
+            rank_element = row.select_one("td.Result_Num")
 
-        horse_cell = (
-            cells[columns["horse"]]
-            if columns["horse"] is not None and columns["horse"] < len(cells)
-            else None
+        frame_cell = row.find(
+            "td", class_=re.compile(r"\bWaku\d+\b")
         )
-        horse_link = horse_cell.select_one("a[href*='/horse/']") if horse_cell else None
-        horse_name = clean(horse_link) if horse_link else cell("horse")
-        horse_href = horse_link.get("href", "") if horse_link else ""
-        horse_id_match = re.search(r"/horse/(\d+)", horse_href)
+        horse_name_link = row.select_one(
+            "td.Horse_Info a[href*='/horse/']"
+        )
 
-        if not horse_name:
-            continue
+        # 馬番は通常3番目のセル
+        horse_number = clean_text(cells[2]) if len(cells) > 2 else ""
 
-        sex_age = cell("sex_age")
-        sex = sex_age[0] if sex_age and sex_age[0] in "牡牝セ" else None
-        age_match = re.search(r"\d+", sex_age)
-        body_weight, body_weight_change = parse_weight(cell("body_weight"))
+        time_cells = row.select("td.Time")
+        finish_time = (
+            clean_text(time_cells[0]) if len(time_cells) > 0 else ""
+        )
+        margin = (
+            clean_text(time_cells[1]) if len(time_cells) > 1 else ""
+        )
+        last_3f = (
+            clean_text(time_cells[2]) if len(time_cells) > 2 else ""
+        )
 
-        results.append({
-            "finish_position": parse_number(cell("finish")),
-            "frame_number": parse_number(cell("frame")),
-            "horse_number": parse_number(cell("number")),
-            "horse_name": horse_name,
-            "horse_id": horse_id_match.group(1) if horse_id_match else None,
-            "sex": sex,
-            "age": int(age_match.group()) if age_match else None,
-            "carried_weight_kg": parse_number(cell("weight")),
-            "jockey": cell("jockey") or None,
-            "finish_time": cell("time") or None,
-            "margin": cell("margin") or None,
-            "popularity": parse_number(cell("popularity")),
-            "win_odds": parse_number(cell("odds")),
-            "last_3f_seconds": parse_number(cell("last3f")),
-            "passing_order": cell("passing") or None,
-            "trainer": cell("trainer") or None,
-            "body_weight_kg": body_weight,
-            "body_weight_change_kg": body_weight_change,
+        sex_age = clean_text(
+            row.select_one("td.Horse_Info.Txt_C .Lgt_Txt")
+        )
+        carried_weight = clean_text(
+            row.select_one("td.Jockey_Info .JockeyWeight")
+        )
+        jockey = clean_text(row.select_one("td.Jockey a"))
+        trainer = clean_text(
+            row.select_one("td.Trainer .TrainerNameSpan")
+        )
+
+        popularity = clean_text(
+            row.select_one("td.Odds.Txt_C .OddsPeople")
+        )
+        odds = clean_text(
+            row.select_one("td.Odds.Txt_R span")
+        )
+        passage = clean_text(row.select_one("td.PassageRate"))
+
+        weight_text = clean_text(row.select_one("td.Weight"))
+        weight_match = re.search(
+            r"(\d+)\s*\(([+-]?\d+)\)", weight_text
+        )
+
+        horses.append({
+            "rank": to_int(clean_text(rank_element)),
+            "frame": to_int(clean_text(frame_cell)),
+            "horse_number": to_int(horse_number),
+            "horse_name": (
+                horse_name_link.get("title")
+                or clean_text(horse_name_link)
+                if horse_name_link else ""
+            ),
+            "horse_id": (
+                re.search(
+                    r"/horse/(\d+)",
+                    horse_name_link.get("href", "")
+                ).group(1)
+                if horse_name_link and re.search(
+                    r"/horse/(\d+)",
+                    horse_name_link.get("href", "")
+                )
+                else ""
+            ),
+            "sex_age": sex_age,
+            "carried_weight": to_float(carried_weight),
+            "jockey": jockey,
+            "finish_time": finish_time,
+            "margin": margin,
+            "popularity": to_int(popularity),
+            "win_odds": to_float(odds),
+            "last_3f": to_float(last_3f),
+            "passage_order": passage,
+            "trainer": trainer,
+            "body_weight": (
+                int(weight_match.group(1)) if weight_match else None
+            ),
+            "weight_change": (
+                int(weight_match.group(2)) if weight_match else None
+            ),
         })
 
-    if not results:
-        raise ValueError("着順データを1頭も抽出できませんでした")
+    if not horses:
+        raise RuntimeError("馬の着順データが0件でした。")
 
-    return results
+    return horses
 
 
-def parse_payouts(soup: BeautifulSoup) -> list[dict]:
-    """払戻テーブルを検出。DOM変更時は未検出となるため検証で確認する。"""
+def parse_payouts(soup):
     payouts = []
-    payout_tables = soup.select(
-        "table.Pay_Table_01, table.Payout_Detail_Table, "
-        "table[class*='Pay_Table'], table[class*='Payout']"
-    )
 
-    seen = set()
-    for table in payout_tables:
-        for row in table.select("tr"):
-            cells = [clean(x) for x in row.select("th, td")]
-            cells = [x for x in cells if x]
+    for table in soup.select("table"):
+        rows = table.select("tr")
+
+        for row in rows:
+            cells = row.find_all(["th", "td"])
             if len(cells) < 2:
                 continue
 
-            text = " ".join(cells)
+            values = [clean_text(cell) for cell in cells]
+            row_text = " ".join(values)
+
+            # 払戻表らしい行のみを対象にする
             if not re.search(
                 r"単勝|複勝|枠連|馬連|ワイド|馬単|3連複|3連単|三連複|三連単",
-                text,
+                row_text,
             ):
                 continue
 
-            key = tuple(cells)
-            if key in seen:
-                continue
-            seen.add(key)
-
             payouts.append({
-                "raw_cells": cells,
-                "raw_text": text,
+                "bet_type": values[0],
+                "details": values[1:],
             })
 
-    return payouts
-
-
-def parse_corner_orders(soup: BeautifulSoup) -> list[dict]:
-    corners = []
-    selectors = [
-        ".Corner_Num",
-        ".RaceCorner",
-        ".Corner_Info",
-        "div[class*='Corner']",
-        "table[class*='Corner']",
-    ]
-
+    # 重複行を除去
+    unique = []
     seen = set()
-    for selector in selectors:
-        for node in soup.select(selector):
-            text = clean(node)
-            if not text or text in seen:
-                continue
-            if re.search(r"[1-4]\s*コーナー|[１-４]コーナー|コーナー通過", text):
-                seen.add(text)
-                corners.append({"raw_text": text})
 
+    for item in payouts:
+        key = json.dumps(item, ensure_ascii=False, sort_keys=True)
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+
+    return unique
+
+
+def parse_corners(soup):
+    corners = []
+
+    # コーナー通過順位の専用エリアがあれば優先
+    for element in soup.select(
+        ".Corner_Num, .Corner_Num01, .RaceCorner, .Corner"
+    ):
+        text = clean_text(element)
+        if text:
+            corners.append(text)
+
+    # 馬ごとのコーナー通過順も保持するため、
+    # 結果テーブルの passage_order は horses に含めている
     return corners
 
 
-def parse_lap_times(soup: BeautifulSoup) -> dict:
+def parse_lap_times(soup):
+    """
+    ラップタイムを複数のHTMLパターンから探す。
+    見つからない場合は空リストを返し、取得処理自体は続行する。
+    """
     candidates = []
-    selectors = [
-        ".LapTime",
-        ".RaceLapTime",
-        ".Lap_Time",
-        "table.Lap_Table",
-        "table[class*='Lap']",
-        "div[class*='Lap']",
+
+    # 1. ラップ関連のclass/idを持つ要素
+    for element in soup.find_all(
+        True,
+        attrs={
+            "class": re.compile(r"lap|haron|pace", re.I)
+        },
+    ):
+        text = clean_text(element)
+        if text and re.search(r"\d+\.\d+", text):
+            candidates.append(text)
+
+    for element in soup.find_all(
+        True,
+        id=re.compile(r"lap|haron|pace", re.I),
+    ):
+        text = clean_text(element)
+        if text and re.search(r"\d+\.\d+", text):
+            candidates.append(text)
+
+    # 2. テーブル行に「ラップ」などの見出しがある場合
+    for row in soup.select("tr"):
+        row_text = clean_text(row)
+        if re.search(r"ラップ|ハロンタイム", row_text):
+            candidates.append(row_text)
+
+    # 重複を除き、数値の並びを抽出
+    unique_candidates = list(dict.fromkeys(candidates))
+
+    for text in unique_candidates:
+        numbers = re.findall(r"(?<!\d)\d{1,3}\.\d(?!\d)", text)
+
+        # 競走ラップは通常複数区間あるため、複数値を採用
+        if len(numbers) >= 3:
+            return [
+                {
+                    "raw": text,
+                    "values": [float(value) for value in numbers],
+                }
+            ]
+
+    return []
+
+
+def validate_minimum_data(payload):
+    if not payload.get("race_id"):
+        raise RuntimeError("race_idがありません。")
+
+    if not payload.get("horses"):
+        raise RuntimeError("馬の結果データがありません。")
+
+    names = [
+        horse.get("horse_name")
+        for horse in payload["horses"]
+        if horse.get("horse_name")
     ]
-
-    seen = set()
-    for selector in selectors:
-        for node in soup.select(selector):
-            text = clean(node)
-            if text and re.search(r"\d+\.\d+", text) and text not in seen:
-                seen.add(text)
-                candidates.append(text)
-
-    # ペースやラップの数字列を候補から抽出する。
-    sectional = []
-    for text in candidates:
-        values = re.findall(r"(?<!\d)(\d{1,2}\.\d)(?!\d)", text)
-        if len(values) >= 3:
-            sectional = [float(v) for v in values]
-            break
-
-    return {
-        "pace": None,
-        "sectional_200m": sectional,
-        "cumulative_200m": [],
-        "last_4f": None,
-        "last_3f": None,
-        "raw_text": candidates,
-    }
+    if not names:
+        raise RuntimeError(
+            "馬名が取得できていません。ページ構造を確認してください。"
+        )
 
 
-def atomic_json_write(path: Path, payload: dict) -> None:
-    """一時ファイルへ書いてから置換。書き込み失敗で既存JSONを壊さない。"""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp_name = None
+def save_json_safely(payload):
+    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-    try:
-        with NamedTemporaryFile(
-            "w",
-            encoding="utf-8",
-            newline="\n",
-            dir=path.parent,
-            prefix=f".{path.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as temp:
-            temp_name = temp.name
-            json.dump(payload, temp, ensure_ascii=False, indent=2)
-            temp.write("\n")
-            temp.flush()
+    temp_file = OUTPUT_FILE.with_suffix(".json.tmp")
 
-        Path(temp_name).replace(path)
-    finally:
-        if temp_name and Path(temp_name).exists():
-            Path(temp_name).unlink(missing_ok=True)
+    with temp_file.open("w", encoding="utf-8") as file:
+        json.dump(payload, file, ensure_ascii=False, indent=2)
+        file.write("\n")
+
+    # 完全に書き終わった後にのみ置換
+    temp_file.replace(OUTPUT_FILE)
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--race-id", default="202505021211")
-    parser.add_argument("--output", default=str(OUTPUT))
+    parser.add_argument(
+        "--race-id",
+        default="202505021211",
+        help="Netkeibaの12桁のレースID",
+    )
     args = parser.parse_args()
 
-    if not re.fullmatch(r"\d{12}", args.race_id):
-        print("ERROR: race_id は12桁の数字で指定してください", file=sys.stderr)
-        return 2
+    race_id = args.race_id.strip()
+    if not re.fullmatch(r"\d{12}", race_id):
+        print("ERROR: race-idは12桁の数字で指定してください。")
+        return 1
 
     try:
-        soup = get_page(args.race_id)
-        race = parse_race_info(soup, args.race_id)
-        results = parse_results(soup)
-        payouts = parse_payouts(soup)
-        corners = parse_corner_orders(soup)
-        laps = parse_lap_times(soup)
+        print(f"レース結果を取得します: {race_id}")
+        html = fetch_html(race_id)
+        soup = BeautifulSoup(html, "html.parser")
 
-        race["number_of_runners"] = len(results)
+        time.sleep(2)
 
-        # 必須カテゴリの欠落を検出。未対応DOMを成功扱いで保存しない。
-        if not race.get("name"):
-            raise ValueError("レース名を取得できません")
-        if not payouts:
-            raise ValueError("払戻データを検出できません。HTML構造を確認してください")
-        if not corners:
-            raise ValueError("コーナー通過順位を検出できません。HTML構造を確認してください")
-        if not laps["sectional_200m"]:
-            raise ValueError("ラップタイムを検出できません。HTML構造を確認してください")
+        horses = parse_horses(soup)
+        lap_times = parse_lap_times(soup)
 
         payload = {
-            "schema_version": "1.0",
-            "race_id": args.race_id,
-            "fetched_at": datetime.now(timezone.utc).isoformat(),
-            "race": race,
-            "results": results,
-            "payouts": payouts,
-            "corner_orders": corners,
-            "lap_times": laps,
-            "sources": {
-                "race_info": "netkeiba_result_page",
-                "results": "netkeiba_result_page",
-                "payouts": "netkeiba_result_page",
-                "corner_orders": "netkeiba_result_page",
-                "lap_times": "netkeiba_result_page",
-            },
+            "race_id": race_id,
+            "scraped_at": datetime.now(
+                timezone.utc
+            ).isoformat(),
+            "race_info": parse_race_info(soup, race_id),
+            "horses": horses,
+            "payouts": parse_payouts(soup),
+            "corners": parse_corners(soup),
+            "lap_times": lap_times,
         }
 
-        # 最終的な型・キー検査を通過してから既存ファイルを置き換える。
-        validate_payload(payload)
-        atomic_json_write(Path(args.output), payload)
+        validate_minimum_data(payload)
+        save_json_safely(payload)
 
-        print(f"OK: {args.output} に {len(results)} 頭分を保存しました")
+        print(f"取得成功: 馬 {len(horses)}頭")
+        print(f"払戻データ: {len(payload['payouts'])}行")
+
+        if lap_times:
+            print("ラップタイム: 検出しました")
+        else:
+            print(
+                "WARNING: ラップタイムは検出できませんでした。"
+                "ほかのデータを保存しました。"
+            )
+
+        print(f"保存先: {OUTPUT_FILE}")
         return 0
 
-    except (requests.RequestException, ValueError, OSError) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        print("既存JSONは置換していません。", file=sys.stderr)
+    except Exception as exc:
+        print(f"ERROR: {exc}")
+        print("既存JSONは置換していません。")
         return 1
 
 
-def validate_payload(data: dict) -> None:
-    """保存前の最低限のスキーマ検査。詳細検査は validate_results.py で実施。"""
-    required = {
-        "schema_version", "race_id", "fetched_at", "race",
-        "results", "payouts", "corner_orders", "lap_times", "sources",
-    }
-    missing = required - data.keys()
-    if missing:
-        raise ValueError(f"必須キー不足: {sorted(missing)}")
-    if not isinstance(data["race"], dict) or not data["race"].get("name"):
-        raise ValueError("race.name がありません")
-    if not isinstance(data["results"], list) or not data["results"]:
-        raise ValueError("results が空です")
-    if not isinstance(data["payouts"], list) or not data["payouts"]:
-        raise ValueError("payouts が空です")
-    if not isinstance(data["corner_orders"], list) or not data["corner_orders"]:
-        raise ValueError("corner_orders が空です")
-    if not isinstance(data["lap_times"], dict):
-        raise ValueError("lap_times がオブジェクトではありません")
-
-
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
