@@ -135,6 +135,32 @@ section{margin-top:26px}
 .vw div b{color:var(--sl);font-weight:600;margin-right:8px}
 .aux-foot{font-size:11px;line-height:1.7;color:var(--sl-d);margin-top:6px}
 
+/* account / status / memo */
+.acct{position:relative}
+.acct select{appearance:none;-webkit-appearance:none;background:var(--panel);border:1px solid var(--line);color:var(--text);
+  font:700 14px var(--font);padding:0 32px 0 14px;border-radius:999px;min-height:42px;max-width:160px}
+.acct select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.acct::after{content:"";position:absolute;right:13px;top:50%;width:7px;height:7px;margin-top:-6px;
+  border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);pointer-events:none}
+.status{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.6}
+.status[hidden],#main[hidden]{display:none}
+.status.load{justify-content:center;padding:36px 14px;background:var(--panel);border:1px solid var(--line);color:var(--mute)}
+.status.warn{background:rgba(224,104,90,.1);border:1px solid rgba(224,104,90,.4);color:#f0b3ab}
+.status .retry{margin-left:auto;flex:none;height:38px;padding:0 14px;border-radius:10px;border:1px solid currentColor;
+  background:transparent;color:inherit;font:700 13px var(--font);cursor:pointer}
+.spin{width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--gold);border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.memo{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.memo-who{font-size:13px;color:var(--mute);margin-bottom:10px}
+.memo-who b{color:var(--gold);font-size:15px}
+.memo textarea{display:block;width:100%;min-height:140px;resize:vertical;background:var(--panel2);border:1px solid var(--line);
+  border-radius:12px;color:var(--text);font:16px/1.7 var(--font);padding:12px}
+.memo textarea:focus{outline:2px solid var(--gold);outline-offset:1px}
+.memo-f{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.memo-st{font-size:12px;color:var(--mute)}
+.memo-st.dirty{color:var(--gold)}
+.memo .btn{height:46px;padding:0 24px}
+
 /* bottom bar */
 .bar-b{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
   background:rgba(16,19,28,.88);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line)}
@@ -156,8 +182,12 @@ section{margin-top:26px}
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><div class="brand">指数競馬</div><div class="date" id="today"></div></div>
+  <div class="top"><div><div class="brand">指数競馬</div><div class="date" id="today"></div></div>
+    <label class="acct"><select id="acctSel" aria-label="アカウントを切り替え"></select></label></div>
 
+  <div id="status" class="status load" role="status"><div class="spin"></div><span>レースデータを読み込み中…</span></div>
+
+  <div id="main" hidden>
   <label class="select" aria-label="レースを選択">
     <select id="raceSel"></select>
   </label>
@@ -181,6 +211,15 @@ section{margin-top:26px}
     <div class="summary"><span>推奨購入額の合計</span><b id="total"></b></div>
   </section>
 
+  <section>
+    <div class="sec-h"><h2>マイメモ</h2><span>この端末に保存</span></div>
+    <div class="memo">
+      <div class="memo-who" id="memoWho"></div>
+      <textarea id="memoText" placeholder="このレースの狙い・気づきをメモ" aria-label="レースメモ"></textarea>
+      <div class="memo-f"><span class="memo-st" id="memoSt"></span><button class="btn pri" id="memoSave" type="button">メモを保存</button></div>
+    </div>
+  </section>
+
   <section class="aux" aria-label="補助情報">
     <details class="aux-card" id="aux">
       <summary>
@@ -193,6 +232,7 @@ section{margin-top:26px}
   </section>
 
   <p class="disc">指数・買い目・掲示板まとめはモックデータによる表示例です。掲示板の意見は根拠が不確かな場合があります。馬券は20歳になってから。購入は自己責任でお願いします。</p>
+  </div>
 </div>
 
 <div class="bar-b"><div>
@@ -203,7 +243,7 @@ section{margin-top:26px}
 
 <script>
 /* ===== モックデータ（全て架空） ===== */
-const RACES = [
+const FALLBACK_RACES = [
   {
     id:"tokyo11", label:"東京11R", name:"秋晴ステークス", grade:"G2", start:"15:45",
     cond:{surface:"芝",dist:1600,going:"良",weather:"晴",course:"左回り",field:10,cls:"3歳以上オープン"},
@@ -289,7 +329,7 @@ const RACES = [
 ];
 
 /* ===== 掲示板・SNS要約（補助情報／全て架空） ===== */
-const BUZZ = {
+const FALLBACK_BUZZ = {
   tokyo11:{
     meta:"14:32更新・約1,240件を要約",
     dark:[
@@ -353,6 +393,11 @@ const TREND = ["内が有利","フラット","外が有利"];
 
 function renderBuzz(r, sorted){
   const b = BUZZ[r.id], total = r.cond.field;
+  if(!b){
+    $("auxMeta").textContent = "データなし";
+    $("auxBody").innerHTML = `<p class="aux-foot" style="margin-top:14px">このレースの掲示板まとめは取得できていません。</p>`;
+    return;
+  }
   const rank = n => sorted.findIndex(h => h.n === n) + 1;
   const nm = n => r.horses.find(h => h.n === n).name;
   $("auxMeta").textContent = b.meta;
@@ -392,6 +437,7 @@ function numBadge(n,total,cls){
 }
 
 function render(i){
+  flushMemo();
   cur = i;
   const r = RACES[i], c = r.cond, total = c.field;
   $("raceName").innerHTML = `<b>${r.name}（${r.grade}）</b>発走 ${r.start}`;
@@ -436,6 +482,7 @@ function render(i){
   }).join("");
   $("total").textContent = `${yen(sum)}（${pts}点）`;
   renderBuzz(r, sorted);
+  loadMemo();
   try{ localStorage.setItem("lastRace", r.id); }catch(e){}
 }
 
@@ -453,11 +500,125 @@ function betText(){
   return lines.join("\n");
 }
 
-/* ===== 初期化 ===== */
-const sel = $("raceSel");
-sel.innerHTML = RACES.map((r,i) => `<option value="${i}">${r.label}　${r.name}</option>`).join("");
-sel.addEventListener("change", () => { render(+sel.value); window.scrollTo({top:0,behavior:"smooth"}); });
+/* ===== 外部データ読み込み ===== */
+let RACES = [], BUZZ = {}, usingFallback = false;
+async function getJSON(url){
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
+  try{
+    const res = await fetch(url, {cache:"no-cache", signal:ctl.signal});
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    return await res.json();
+  } finally { clearTimeout(t); }
+}
+const TR = {inside:0, flat:1, outside:2};
+function normRaces(j){
+  if(!j || !Array.isArray(j.races) || !j.races.length) throw new Error("races が空です");
+  return j.races.map(r => {
+    const c = r.condition || {}, hs = r.horses || [], a = r.analysis || {};
+    if(!r.id || !hs.length) throw new Error("race.id / horses が不正です");
+    return {
+      id:r.id, label:r.label || r.id, name:r.name || "", grade:r.grade || "", start:r.start_time || "",
+      cond:{surface:c.surface || "", dist:c.distance || "", going:c.going || "", weather:c.weather || "-",
+            course:c.course || "", field:c.field_size || hs.length, cls:c.class || ""},
+      horses:hs.map(h => ({n:h.num, name:h.name, jk:h.jockey, s:h.score})),
+      lead:a.summary || "",
+      notes:(a.points || []).map(p => [p.title, p.text, p.warn ? 1 : 0]),
+      bets:(r.bets || []).map(b => ({type:b.type, tag:b.tag || "", hero:b.hero ? 1 : 0, note:b.note || "",
+            combos:(b.combos || []).map(x => [...x.nums, x.amount])}))
+    };
+  });
+}
+function normBuzz(j){
+  if(!j || !Array.isArray(j.summaries)) throw new Error("summaries がありません");
+  const out = {};
+  j.summaries.forEach(s => {
+    const g = s.going || {};
+    out[s.race_id] = {
+      meta:`${s.updated_at || ""}更新・約${(s.post_count || 0).toLocaleString("ja-JP")}件を要約`,
+      dark:(s.dark_horses || []).map(d => ({n:d.num, txt:d.comment, heat:Math.max(1, Math.min(5, d.heat || 1))})),
+      trend:TR[g.trend] ?? 1,
+      going:(g.reports || []).map(x => [x.time, x.text]),
+      views:(s.views || []).map(v => [v.tag, v.text, v.likes || 0])
+    };
+  });
+  return out;
+}
 
+function setStatus(kind, msg){
+  const s = $("status");
+  if(!kind){ s.hidden = true; return; }
+  s.hidden = false; s.className = "status " + kind;
+  s.innerHTML = kind === "load" ? `<div class="spin"></div><span>${msg}</span>`
+    : `<span>${msg}</span><button type="button" class="retry" id="retryBtn">再読み込み</button>`;
+  const b = $("retryBtn"); if(b) b.onclick = loadAll;
+}
+
+async function loadAll(){
+  setStatus("load", "レースデータを読み込み中…");
+  const keepId = RACES[cur] && RACES[cur].id;
+  const [rr, bb] = await Promise.allSettled([getJSON("race_data.json"), getJSON("bulletin_summary.json")]);
+  let buzzFailed = false;
+  try{
+    if(rr.status !== "fulfilled") throw rr.reason;
+    RACES = normRaces(rr.value); usingFallback = false;
+  }catch(e){ console.warn("race_data.json:", e); RACES = FALLBACK_RACES; usingFallback = true; }
+  try{
+    if(bb.status !== "fulfilled") throw bb.reason;
+    BUZZ = normBuzz(bb.value);
+  }catch(e){ console.warn("bulletin_summary.json:", e); buzzFailed = true; BUZZ = usingFallback ? FALLBACK_BUZZ : {}; }
+
+  let last = keepId; 
+  try{ last = last || localStorage.getItem("lastRace"); }catch(e){}
+  const idx = Math.max(0, RACES.findIndex(r => r.id === last));
+  sel.innerHTML = RACES.map((r,k) => `<option value="${k}">${r.label}　${r.name}</option>`).join("");
+  sel.value = idx;
+  $("main").hidden = false;
+  render(idx);
+
+  if(usingFallback) setStatus("warn", "race_data.json を読み込めませんでした。内蔵のサンプルデータを表示しています。");
+  else if(buzzFailed) setStatus("warn", "掲示板まとめ（bulletin_summary.json）を取得できませんでした。レース情報は最新です。");
+  else setStatus(null);
+}
+
+/* ===== アカウント & メモ ===== */
+const ACCOUNTS = ["アレハンドロ","カワブン","カホ","ウルゲン"];
+let account = ACCOUNTS[0];
+try{ const a = localStorage.getItem("account"); if(ACCOUNTS.includes(a)) account = a; }catch(e){}
+
+let memoCtx = null, memoDirty = false;
+const memoKey = (a, id) => `memo:${a}:${id}`;
+function memoState(t, dirty){ const e = $("memoSt"); e.textContent = t; e.className = "memo-st" + (dirty ? " dirty" : ""); }
+function writeMemo(ctx){
+  const v = $("memoText").value;
+  try{
+    if(v.trim()) localStorage.setItem(memoKey(ctx.a, ctx.id), v);
+    else localStorage.removeItem(memoKey(ctx.a, ctx.id));
+    return true;
+  }catch(e){ return false; }
+}
+function flushMemo(){            // 切り替え前に未保存の変更を元の組み合わせへ自動保存
+  if(!memoCtx || !memoDirty) return;
+  if(writeMemo(memoCtx)) memoDirty = false;
+}
+function loadMemo(){
+  const r = RACES[cur]; memoCtx = {a:account, id:r.id};
+  let v = ""; try{ v = localStorage.getItem(memoKey(account, r.id)) || ""; }catch(e){}
+  $("memoText").value = v; memoDirty = false;
+  $("memoWho").innerHTML = `<b>${account}</b> のメモ ／ ${r.label} ${r.name}`;
+  memoState(v ? "保存済み" : "未入力", false);
+}
+
+/* ===== 初期化 ===== */
+const sel = $("raceSel"), acSel = $("acctSel");
+acSel.innerHTML = ACCOUNTS.map(a => `<option>${a}</option>`).join("");
+acSel.value = account;
+acSel.addEventListener("change", () => {
+  flushMemo(); account = acSel.value;
+  try{ localStorage.setItem("account", account); }catch(e){}
+  if(RACES.length) loadMemo();
+  toast(`${account} に切り替えました`);
+});
+sel.addEventListener("change", () => { render(+sel.value); window.scrollTo({top:0,behavior:"smooth"}); });
 $("nextBtn").addEventListener("click", () => {
   const n = (cur + 1) % RACES.length;
   sel.value = n; render(n); window.scrollTo({top:0,behavior:"smooth"});
@@ -473,18 +634,18 @@ $("shareBtn").addEventListener("click", async () => {
     toast("買い目をコピーしました");
   }catch(e){ toast("コピーできませんでした"); }
 });
+$("memoText").addEventListener("input", () => { memoDirty = true; memoState("未保存の変更があります", true); });
+$("memoSave").addEventListener("click", () => {
+  if(!memoCtx) return;
+  if(writeMemo(memoCtx)){ memoDirty = false; memoState($("memoText").value.trim() ? "保存済み" : "未入力", false); toast("メモを保存しました"); }
+  else toast("保存できませんでした");
+});
+document.addEventListener("visibilitychange", () => { if(document.hidden) flushMemo(); });
+window.addEventListener("pagehide", flushMemo);
 
 const d = new Date();
 $("today").textContent = `${d.getMonth()+1}月${d.getDate()}日（${"日月火水木金土"[d.getDay()]}）`;
-
-let start = 0;
-try{
-  const last = localStorage.getItem("lastRace");
-  const idx = RACES.findIndex(r => r.id === last);
-  if(idx >= 0) start = idx;
-}catch(e){}
-sel.value = start;
-render(start);
+loadAll();
 </script>
 </body>
 </html>
