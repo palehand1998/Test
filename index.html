@@ -99,6 +99,42 @@ section{margin-top:26px}
 .summary b{font-size:22px;font-variant-numeric:tabular-nums}
 .disc{margin-top:22px;font-size:11px;line-height:1.7;color:var(--mute);text-align:center;padding:0 10px}
 
+/* ===== 補助情報（掲示板・世論）: 本編と別トーンのスレート系・破線 ===== */
+.aux{margin-top:40px;padding-top:26px;border-top:1px dashed var(--line)}
+.aux-card{--sl:#93a8bf;--sl-d:#5d6d82;--sl-line:#343d50;--sl-bg:#131824;
+  background:var(--sl-bg);border:1.5px dashed var(--sl-line);border-radius:14px;color:#c4cbd6}
+.aux-card summary{list-style:none;cursor:pointer;position:relative;padding:16px 46px 16px 16px;min-height:56px}
+.aux-card summary::-webkit-details-marker{display:none}
+.aux-card summary:focus-visible{outline:2px solid var(--sl);outline-offset:2px;border-radius:14px}
+.aux-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.aux-tag{font-size:11px;font-weight:700;color:var(--sl);border:1px solid var(--sl-d);border-radius:6px;padding:2px 8px}
+.aux-meta{font-size:11px;color:var(--sl-d)}
+.aux-card h2{font-size:16px;font-weight:700;color:#d5dbe5}
+.aux-note{font-size:12px;line-height:1.6;color:var(--sl);margin-top:6px}
+.aux-card summary::after{content:"";position:absolute;right:20px;top:26px;width:9px;height:9px;
+  border-right:2px solid var(--sl);border-bottom:2px solid var(--sl);transform:rotate(45deg);transition:transform .2s}
+.aux-card[open] summary::after{transform:rotate(-135deg);top:30px}
+.aux-body{padding:2px 16px 16px;border-top:1px dashed var(--sl-line)}
+.aux-h{font-size:13px;font-weight:700;color:var(--sl);margin:18px 0 10px}
+.aux .num{width:26px;height:26px;font-size:13px;border-radius:7px;opacity:.9}
+.dk{display:grid;grid-template-columns:26px 1fr;gap:10px;padding:11px 0;border-top:1px dotted var(--sl-line)}
+.dk:first-of-type{border-top:0}
+.dk-n{font-size:14px;font-weight:700;color:#d5dbe5}
+.dk-n em{font-style:normal;font-size:11px;font-weight:500;color:var(--sl);margin-left:8px;border:1px solid var(--sl-line);border-radius:5px;padding:1px 6px}
+.dk p{font-size:13.5px;line-height:1.7;margin-top:3px}
+.heat{display:block;font-size:11px;color:var(--sl-d);margin-top:5px;letter-spacing:.1em}
+.heat b{color:var(--sl);font-weight:400}
+.trend{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.trend span{text-align:center;font-size:12.5px;padding:8px 0;border:1px dashed var(--sl-line);border-radius:8px;color:var(--sl-d)}
+.trend span.on{border-style:solid;border-color:var(--sl);color:#e1e6ee;font-weight:700;background:rgba(147,168,191,.12)}
+.gn{display:grid;grid-template-columns:62px 1fr;gap:8px;padding:8px 0;font-size:13.5px;line-height:1.65}
+.gn time{font-size:11.5px;color:var(--sl-d);padding-top:2px}
+.vw{border-left:2px dashed var(--sl-d);padding:2px 0 2px 12px;margin:0 0 12px}
+.vw p{font-size:13.5px;line-height:1.7}
+.vw div{margin-top:5px;font-size:11.5px;color:var(--sl-d)}
+.vw div b{color:var(--sl);font-weight:600;margin-right:8px}
+.aux-foot{font-size:11px;line-height:1.7;color:var(--sl-d);margin-top:6px}
+
 /* bottom bar */
 .bar-b{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
   background:rgba(16,19,28,.88);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line)}
@@ -143,8 +179,20 @@ section{margin-top:26px}
     <div class="sec-h"><h2>推奨買い目</h2><span id="betCount"></span></div>
     <div class="bets" id="bets"></div>
     <div class="summary"><span>推奨購入額の合計</span><b id="total"></b></div>
-    <p class="disc">指数・買い目はモックデータによる表示例です。馬券は20歳になってから。購入は自己責任でお願いします。</p>
   </section>
+
+  <section class="aux" aria-label="補助情報">
+    <details class="aux-card" id="aux">
+      <summary>
+        <div class="aux-top"><span class="aux-tag">参考情報</span><span class="aux-meta" id="auxMeta"></span></div>
+        <h2>掲示板・世論のまとめ</h2>
+        <p class="aux-note">※みんなの掲示板・SNSの意見をAIが要約（参考情報）。予想指数・推奨買い目には反映されていません。</p>
+      </summary>
+      <div class="aux-body" id="auxBody"></div>
+    </details>
+  </section>
+
+  <p class="disc">指数・買い目・掲示板まとめはモックデータによる表示例です。掲示板の意見は根拠が不確かな場合があります。馬券は20歳になってから。購入は自己責任でお願いします。</p>
 </div>
 
 <div class="bar-b"><div>
@@ -240,6 +288,88 @@ const RACES = [
   }
 ];
 
+/* ===== 掲示板・SNS要約（補助情報／全て架空） ===== */
+const BUZZ = {
+  tokyo11:{
+    meta:"14:32更新・約1,240件を要約",
+    dark:[
+      {n:10,txt:"坂路で自己ベストを記録。「追い切りの動きが別馬」という声が複数あり、人気薄なら妙味ありと見る投稿が増加中。",heat:4},
+      {n:5,txt:"前走は不利を受けて着順ほど負けていないとの見方。外枠から流れに乗れれば上位争いも。",heat:3},
+      {n:3,txt:"陣営コメントが強気との書き込み。ただ根拠は見当たらず、噂の域を出ません。",heat:2}
+    ],
+    trend:1,
+    going:[
+      ["12分前","前のレースは外から差し切り。直線は外めに伸びる馬が目立つとの声。"],
+      ["40分前","内側の芝は傷みが少なく、先行馬も残っているという報告。"],
+      ["1時間前","含水率は平年並み。時計は標準的との投稿。"]
+    ],
+    views:[
+      ["枠順","外枠のスタートが鍵になりそう。出遅れ癖のある馬は割引という意見が優勢。",128],
+      ["不利","前走の不利が響いていただけで今回は狙い目、と⑤を推す声。",96],
+      ["展開","逃げ馬が複数いてペースは流れそう。差し馬有利を想定するファンが多数。",74],
+      ["人気","④は人気が集中して妙味が薄いという慎重な見方も。",51]
+    ]
+  },
+  nakayama11:{
+    meta:"14:28更新・約860件を要約",
+    dark:[
+      {n:9,txt:"時計のかかる稍重は合うはず。母方の血統から道悪巧者と見る向きあり。",heat:4},
+      {n:2,txt:"馬体の仕上がりが絶好とのコメント。人気になっていない今回は一考、という声。",heat:3},
+      {n:7,txt:"最内を立ち回れば粘れるかも、という程度の言及。話題性は低め。",heat:2}
+    ],
+    trend:2,
+    going:[
+      ["8分前","内ラチ沿いは雨で傷みが進み、外を回した馬の伸びが目立つとの報告。"],
+      ["35分前","稍重発表だが水分は抜けつつあり、回復途上との声。"],
+      ["1時間前","序盤のレースは時計が平年より約1秒かかっていたとの投稿。"]
+    ],
+    views:[
+      ["道悪","⑥は道悪実績で頭ひとつ抜けているとの声が大半。",142],
+      ["コース","⑧は右回りの勝ち鞍なし。人気ほど信用できない、という意見。",88],
+      ["馬場","外差しが効くなら③の末脚が活きると見る投稿。",63]
+    ]
+  },
+  kyoto11:{
+    meta:"14:35更新・約980件を要約",
+    dark:[
+      {n:6,txt:"重馬場でパフォーマンスが上がるタイプとの指摘。ダート短距離の道悪で過去2勝。",heat:4},
+      {n:9,txt:"揉まれずに運べれば粘り込みもあるのでは、との声。",heat:3},
+      {n:1,txt:"人気薄だが、相手なりに走るタイプという書き込みが少数。",heat:2}
+    ],
+    trend:0,
+    going:[
+      ["6分前","逃げ・先行馬が連続で押し切り。差しは届きにくいという書き込みが多数。"],
+      ["30分前","小雨で脚抜きの良い状態が継続。時計は速めとの声。"],
+      ["1時間前","外のダートは砂がやや深く、差し馬は苦戦気味との報告。"]
+    ],
+    views:[
+      ["スタート","⑪は外枠でもダッシュ力でハナを取れるかが鍵という見方。",117],
+      ["重馬場","脚抜きが良く前残り濃厚。逃げ・先行馬中心で組む派が多数。",91],
+      ["道悪","⑧は重で割引、との声。",57]
+    ]
+  }
+};
+const TREND = ["内が有利","フラット","外が有利"];
+
+function renderBuzz(r, sorted){
+  const b = BUZZ[r.id], total = r.cond.field;
+  const rank = n => sorted.findIndex(h => h.n === n) + 1;
+  const nm = n => r.horses.find(h => h.n === n).name;
+  $("auxMeta").textContent = b.meta;
+  $("auxBody").innerHTML =
+    `<h3 class="aux-h">注目されている穴馬の噂</h3>` +
+    b.dark.map(d => `<div class="dk">${numBadge(d.n,total)}<div>
+      <div class="dk-n">${nm(d.n)}<em>指数${rank(d.n)}位</em></div>
+      <p>${d.txt}</p>
+      <span class="heat">話題度 <b>${"●".repeat(d.heat)}</b>${"○".repeat(5-d.heat)}</span></div></div>`).join("") +
+    `<h3 class="aux-h">馬場状態のリアルタイムの気配</h3>
+     <div class="trend">${TREND.map((t,k) => `<span class="${k===b.trend?"on":""}">${t}</span>`).join("")}</div>` +
+    b.going.map(([t,x]) => `<div class="gn"><time>${t}</time><span>${x}</span></div>`).join("") +
+    `<h3 class="aux-h">ファンの主な見解</h3>` +
+    b.views.map(([tag,x,l]) => `<div class="vw"><p>「${x}」</p><div><b>${tag}</b>共感 ${l}</div></div>`).join("") +
+    `<p class="aux-foot">投稿内容の真偽は確認されていません。判断の材料のひとつとしてご利用ください。</p>`;
+}
+
 /* ===== 枠色（JRA基準） ===== */
 const GATE = [
   {bg:"#f4f4f2",fg:"#111"},{bg:"#1a1a1a",fg:"#fff"},{bg:"#d6362f",fg:"#fff"},{bg:"#2e6fd1",fg:"#fff"},
@@ -305,6 +435,7 @@ function render(i){
       <div class="combos">${rows}</div><p class="bet-note">${b.note}</p></div>`;
   }).join("");
   $("total").textContent = `${yen(sum)}（${pts}点）`;
+  renderBuzz(r, sorted);
   try{ localStorage.setItem("lastRace", r.id); }catch(e){}
 }
 
