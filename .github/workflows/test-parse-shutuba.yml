@@ -1,0 +1,27 @@
+
+name: Test Shutuba Parser
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-parser:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: Pythonをセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 必要なライブラリをインストール
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
+
+      - name: 出走馬解析テスト
+        run: |
+          python -m unittest -v test_parse_shutuba.py
