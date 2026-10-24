@@ -32,6 +32,10 @@ def main():
     print("出馬表を取得しています...")
     html = fetcher.get(url)
 
+    print("HTML文字数:", len(html))
+    print("HTML冒頭:", repr(html[:500]))
+    print("HorseList件数:", html.count("HorseList"))
+
     race, horses = parse_shutuba(html, args.race_id)
 
     print("\n=== レース情報 ===")
