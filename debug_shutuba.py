@@ -26,7 +26,7 @@ def main():
     if len(args.race_id) != 12 or not args.race_id.isdigit():
         parser.error("race-id は12桁の数字で指定してください")
 
-    fetcher = Fetcher(sleep=2.5)
+    fetcher = Fetcher(user_agent="Mozilla/5.0 (compatible; RaceDataBot/1.0)", sleep=2.5)
 
     url = SHUTUBA_URL.format(race_id=args.race_id)
     print("出馬表を取得しています...")
