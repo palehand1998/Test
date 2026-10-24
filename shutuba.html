@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#10131c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="出馬表">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>出馬表 | 過去3走</title>
+<style>
+:root{--bg:#10131c;--panel:#181c28;--panel2:#1f2433;--line:#2a3043;--text:#ebe8e2;--mute:#8d93a6;
+  --gold:#d9b45b;--gold-d:#8a7236;--red:#e0685a;--r:16px;
+  --font:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+body{padding-top:env(safe-area-inset-top);min-height:100dvh}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top);background:var(--bg);z-index:20}
+h1,h2,p{margin:0}
+button{font:inherit;color:inherit}
+.wrap{max-width:560px;margin:0 auto;padding:0 14px calc(40px + env(safe-area-inset-bottom))}
+[hidden]{display:none!important}
+
+.top{display:flex;align-items:center;justify-content:space-between;padding:10px 2px 12px}
+.brand{font-size:15px;font-weight:700;letter-spacing:.04em;color:var(--gold)}
+.upd{font-size:11px;color:var(--mute);margin-top:2px}
+.ibtn{height:42px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-weight:700;font-size:13px;cursor:pointer}
+.ibtn:active{transform:scale(.97)}
+.ibtn:focus-visible,.hrow:focus-visible,.seg button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.select{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.select select{appearance:none;-webkit-appearance:none;width:100%;background:transparent;border:0;color:var(--text);
+  font:700 17px/1.3 var(--font);padding:15px 46px 15px 16px;border-radius:var(--r);min-height:56px;text-overflow:ellipsis}
+.select select option{background:#fff;color:#000}
+.select::after{content:"";position:absolute;right:19px;top:50%;width:9px;height:9px;margin-top:-7px;
+  border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);pointer-events:none}
+
+.rhead{margin:18px 2px 10px}
+.rname{font-size:21px;font-weight:800;line-height:1.35}
+.rmeta{font-size:13px;color:var(--mute);margin-top:4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+.chip{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:13px;white-space:nowrap}
+.chip.main{border-color:var(--gold-d);color:var(--gold);font-weight:700}
+
+.ctl{position:sticky;top:env(safe-area-inset-top);z-index:10;margin:14px -14px 0;padding:10px 14px;
+  background:rgba(16,19,28,.88);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:3px}
+.seg button{height:40px;border:0;border-radius:9px;background:transparent;color:var(--mute);font-weight:700;font-size:14px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--panel2);color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold-d)}
+.sum{display:flex;justify-content:space-between;font-size:12px;color:var(--mute);margin:8px 2px 0}
+
+.notice{margin:12px 0 0;padding:11px 14px;border-radius:12px;font-size:13px;line-height:1.6;
+  background:rgba(224,104,90,.1);border:1px solid rgba(224,104,90,.4);color:#f0b3ab}
+.notice.info{background:var(--panel);border-color:var(--line);color:var(--mute)}
+
+.list{margin-top:14px;display:grid;gap:10px}
+.horse{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.horse.scr{opacity:.5}
+.horse.open{border-color:var(--gold-d)}
+.hrow{width:100%;display:grid;grid-template-columns:36px 1fr auto 14px;gap:11px;align-items:center;text-align:left;
+  background:transparent;border:0;padding:13px 14px;min-height:72px;cursor:pointer}
+.num{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:17px;
+  font-variant-numeric:tabular-nums;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.hmain{min-width:0;display:grid;gap:3px}
+.hname{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hsub{font-size:12px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.form{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:11px;color:var(--mute)}
+.fm{font-style:normal;min-width:22px;height:20px;padding:0 5px;border-radius:6px;display:inline-grid;place-items:center;
+  font-weight:800;font-size:12px;background:var(--panel2);color:var(--text);font-variant-numeric:tabular-nums}
+.fm.r1,.pf.r1{background:var(--gold);color:#241d08}
+.fm.r2,.pf.r2{background:#aeb4c2;color:#16181f}
+.fm.r3,.pf.r3{background:#b07c4f;color:#1f1409}
+.fm.none{color:var(--mute);font-weight:400}
+.odds{text-align:right;line-height:1}
+.odds b{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.odds small{display:block;font-size:11px;color:var(--mute);margin-top:5px}
+.odds.fav b{color:var(--gold)}
+.chev{width:8px;height:8px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);transition:transform .2s}
+.open .chev{transform:rotate(-135deg)}
+
+.past{padding:2px 12px 14px;border-top:1px solid var(--line)}
+.pinfo{font-size:12px;color:var(--mute);margin:12px 2px 10px;display:flex;flex-wrap:wrap;gap:4px 14px}
+.pst{font-size:12px;color:var(--gold);margin:0 2px 10px}
+.pr{background:var(--panel2);border-radius:12px;padding:12px;margin-top:8px}
+.pr-top{display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--mute)}
+.pr-top .pn{color:var(--text);font-weight:700;font-size:14px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr-top .pd{flex:none}
+.pr-mid{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;margin-top:10px}
+.pf{min-width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:24px;font-weight:800;
+  background:var(--bg);font-variant-numeric:tabular-nums;line-height:1;padding:0 6px}
+.pf small{font-size:10px;font-weight:600;margin-top:-6px}
+.pt b{font-size:18px;font-variant-numeric:tabular-nums}
+.pt small{margin-left:8px;font-size:12px;color:var(--mute)}
+.pm{font-size:12px;color:var(--mute);margin-top:4px}
+.pg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 6px;margin:11px 0 0;padding-top:10px;border-top:1px dashed var(--line)}
+.pg div{min-width:0}
+.pg dt{font-size:10.5px;color:var(--mute)}
+.pg dd{margin:2px 0 0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.empty{font-size:13px;color:var(--mute);padding:12px 2px;line-height:1.7}
+
+.sk{height:72px;border-radius:var(--r);background:linear-gradient(90deg,var(--panel),var(--panel2),var(--panel));
+  background-size:200% 100%;animation:sh 1.2s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+.err{margin-top:24px;padding:22px 18px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);text-align:center}
+.err h2{font-size:17px;margin-bottom:8px}
+.err p{font-size:13px;color:var(--mute);line-height:1.7;margin-bottom:16px}
+.err code{color:var(--gold);word-break:break-all}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><div class="brand">出馬表 × 過去3走</div><div class="upd" id="upd">読み込み中…</div></div>
+    <button class="ibtn" id="reload" type="button">更新</button>
+  </div>
+  <div id="app"><div class="list"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div></div>
+</div>
+
+<script>
+const DATA_URL = "data/raw_shutuba_with_history.json";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const WK = ["日","月","火","水","木","金","土"];
+const VENUE = {"01":"札幌","02":"函館","03":"福島","04":"新潟","05":"東京","06":"中山","07":"中京","08":"京都","09":"阪神","10":"小倉"};
+const GATE = [["#f4f4f2","#111"],["#1a1a1a","#fff"],["#d6362f","#fff"],["#2e6fd1","#fff"],["#f2cf2e","#111"],["#2f9a4e","#fff"],["#ee8a1d","#111"],["#ee86b4","#111"]];
+const STATUS = {
+  stale:"過去成績は取得に失敗したため、前回取得分を表示しています。",
+  error:"過去成績を取得できませんでした。",
+  not_fetched:"過去成績は未取得です。",
+  no_table:"戦績データが見つかりませんでした（初出走の可能性があります）。",
+  no_data:"表示できる過去成績がありません。",
+  no_horse_id:"馬IDが取得できなかったため、過去成績はありません。",
+  scratched:"出走取消"
+};
+
+const S = {store:null, id:null, sort:"no"};
+try{ S.sort = localStorage.getItem("sort") || "no"; S.id = localStorage.getItem("raceId"); }catch(e){}
+
+/* ---------- 表示用ヘルパ ---------- */
+function fmtDate(iso, refYear){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+  if(!m) return "—";
+  const d = new Date(+m[1], +m[2]-1, +m[3]);
+  return (refYear && +m[1] !== refYear ? m[1] + "/" : "") + `${+m[2]}/${+m[3]}(${WK[d.getDay()]})`;
+}
+function venueOf(r){   // 本文に競馬場名があればそれ、無ければ JRA の race_id(5-6桁目)から
+  const m = (r.race_data02_raw || "").match(new RegExp(Object.values(VENUE).join("|")));
+  return m ? m[0] : (VENUE[(r.race_id || "").slice(4,6)] || null);
+}
+const raceNo = r => (r.race_id || "").length === 12 ? `${+r.race_id.slice(10)}R` : "";
+const finish = p => p.finish_pos ?? p.finish_raw ?? "—";
+const rk = p => p.finish_pos >= 1 && p.finish_pos <= 3 ? " r" + p.finish_pos : "";
+const num = (v, d) => v == null ? null : Number(v).toFixed(d);
+const bw = o => o && o.body_weight != null ? `${o.body_weight}${o.body_weight_diff != null ? `(${o.body_weight_diff > 0 ? "+" : ""}${o.body_weight_diff})` : ""}` : null;
+
+/* ---------- 描画 ---------- */
+function pastCard(p, ry){
+  const meta = [p.surface && p.distance_m ? p.surface + p.distance_m : null, p.track_condition, p.weather].filter(Boolean).join(" · ");
+  const sub = [p.horse_no != null ? p.horse_no + "番" : null, p.popularity != null ? p.popularity + "人気" : null,
+               p.head_count != null ? p.head_count + "頭" : null].filter(Boolean).join(" · ");
+  const grid = [["上り3F", num(p.last_3f,1)], ["通過", p.passing], ["斤量", p.weight_carried != null ? p.weight_carried + "kg" : null],
+                ["騎手", p.jockey], ["馬体重", bw(p)], ["オッズ", num(p.odds,1)]].filter(x => x[1] != null && x[1] !== "");
+  return `<div class="pr">
+    <div class="pr-top"><span class="pd">${fmtDate(p.date, ry)}</span><span>${esc(p.venue || "")}</span><span class="pn">${esc(p.race_name || "—")}</span></div>
+    <div class="pr-mid"><div class="pf${rk(p)}">${esc(finish(p))}${p.finish_pos != null ? "<small>着</small>" : ""}</div>
+      <div><div class="pt"><b>${esc(p.time || "—")}</b>${p.margin ? `<small>着差 ${esc(p.margin)}</small>` : ""}</div>
+      <div class="pm">${esc([meta, sub].filter(Boolean).join(" ／ ") || "—")}</div></div></div>
+    ${grid.length ? `<dl class="pg">${grid.map(([k,v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>` : ""}</div>`;
+}
+
+function horseCard(h, race, favNo){
+  const [bg, fg] = GATE[(h.frame_no || 0) - 1] || ["#2a3043","#ebe8e2"];
+  const pr = Array.isArray(h.past_results) ? h.past_results : [];
+  const ry = +(race.date || "").slice(0,4) || null;
+  const st = h.history_status, scr = h.scratched;
+  const sub = [h.jockey && h.jockey.name, h.weight_carried != null ? h.weight_carried + "kg" : null,
+               h.sex && h.age != null ? h.sex + h.age : null].filter(Boolean).join(" · ");
+  const form = pr.length ? pr.map(p => `<i class="fm${rk(p)}">${esc(finish(p))}</i>`).join("") : `<i class="fm none">—</i>`;
+  const info = [h.trainer ? "調教師 " + esc(h.trainer) : "", bw(h) ? "馬体重 " + bw(h) : ""].filter(Boolean).map(t => `<span>${t}</span>`).join("");
+  const note = STATUS[st] && st !== "ok" && st !== "cache" ? `<p class="${pr.length ? "pst" : "empty"}">${STATUS[st]}</p>` : "";
+  const body = pr.length ? pr.map(p => pastCard(p, ry)).join("") : (note ? "" : `<p class="empty">過去成績がありません。</p>`);
+  const id = "p" + (h.horse_id || h.horse_no);
+  return `<article class="horse${scr ? " scr" : ""}">
+    <button class="hrow" type="button" aria-expanded="false" aria-controls="${id}">
+      <span class="num" style="background:${bg};color:${fg}">${esc(h.horse_no ?? "–")}</span>
+      <span class="hmain"><span class="hname">${esc(h.horse_name || "（馬名不明）")}</span>
+        <span class="hsub">${esc(sub) || "—"}</span><span class="form">${scr ? "" : "近走 " + form}</span></span>
+      <span class="odds${h.horse_no === favNo ? " fav" : ""}">${scr ? "<b style='font-size:15px'>取消</b>" :
+        `<b>${h.odds != null ? num(h.odds,1) : "—"}</b><small>${h.popularity != null ? h.popularity + "人気" : "オッズ未確定"}</small>`}</span>
+      <span class="chev"></span></button>
+    <div class="past" id="${id}" hidden><div class="pinfo">${info}</div>${note}${body}</div></article>`;
+}
+
+function sortHorses(hs){
+  const k = {no: h => h.horse_no, pop: h => h.popularity, odds: h => h.odds}[S.sort];
+  const v = h => k(h) == null ? Infinity : k(h);
+  return [...hs].sort((a,b) => (a.scratched - b.scratched) || (v(a) - v(b)) || ((a.horse_no ?? 99) - (b.horse_no ?? 99)));
+}
+
+function render(){
+  const races = S.store.races, ids = Object.keys(races).sort((a,b) =>
+    ((races[a].date || "") + a).localeCompare((races[b].date || "") + b));
+  if(!races[S.id]) S.id = ids[0];
+  const r = races[S.id], hs = r.horses || [];
+  const label = x => `${venueOf(x) || ""}${raceNo(x)} ${x.name || ""}`.trim();
+  const active = hs.filter(h => !h.scratched), scr = hs.length - active.length;
+  const weak = active.filter(h => ["error","stale","not_fetched","no_horse_id"].includes(h.history_status)).length;
+  const fav = (active.filter(h => h.popularity === 1)[0] || {}).horse_no;
+  const chips = [[r.surface && r.distance_m ? r.surface + r.distance_m + "m" : null, 1], [r.track_condition ? r.track_condition + "馬場" : null, 1],
+    [r.weather], [r.direction ? r.direction + "回り" : null], [r.head_count != null ? r.head_count + "頭立て" : null]].filter(c => c[0]);
+
+  $("app").innerHTML = `
+    <label class="select"><select id="raceSel" aria-label="レースを選択">${ids.map(id =>
+      `<option value="${esc(id)}"${id === S.id ? " selected" : ""}>${esc(fmtDate(races[id].date))} ${esc(label(races[id]))}</option>`).join("")}</select></label>
+    <div class="rhead"><h1 class="rname">${esc(r.name || r.race_id)}</h1>
+      <p class="rmeta">${esc([fmtDate(r.date), venueOf(r) ? venueOf(r) + raceNo(r) : null, r.start_time ? r.start_time + "発走" : null].filter(Boolean).join(" ・ "))}</p>
+      <div class="chips">${chips.map(([t,m]) => `<span class="chip${m ? " main" : ""}">${esc(t)}</span>`).join("")}</div></div>
+    ${weak ? `<p class="notice">${weak}頭の過去成績が取得できていません（前回分の表示、または未取得）。</p>` : ""}
+    <div class="ctl"><div class="seg" role="group" aria-label="並び替え">
+      ${[["no","馬番順"],["pop","人気順"],["odds","オッズ順"]].map(([k,t]) => `<button type="button" data-sort="${k}" aria-pressed="${S.sort === k}">${t}</button>`).join("")}</div>
+      <div class="sum"><span>出走 ${active.length}頭${scr ? `（取消 ${scr}頭）` : ""}</span><span>タップで過去3走</span></div></div>
+    <div class="list" id="list">${sortHorses(hs).map(h => horseCard(h, r, fav)).join("") || `<p class="empty">出走馬データがありません。</p>`}</div>`;
+
+  const u = S.store.updated_at ? new Date(S.store.updated_at) : null;
+  $("upd").textContent = u && !isNaN(u) ? `データ更新 ${u.getMonth()+1}/${u.getDate()} ${String(u.getHours()).padStart(2,"0")}:${String(u.getMinutes()).padStart(2,"0")}` : "更新日時不明";
+  document.title = `${r.name || "出馬表"} | 過去3走`;
+  try{ localStorage.setItem("raceId", S.id); localStorage.setItem("sort", S.sort); }catch(e){}
+}
+
+/* ---------- イベント ---------- */
+document.addEventListener("click", e => {
+  const row = e.target.closest(".hrow");
+  if(row){
+    const open = row.getAttribute("aria-expanded") !== "true";
+    row.setAttribute("aria-expanded", open);
+    row.parentElement.classList.toggle("open", open);
+    $(row.getAttribute("aria-controls")).hidden = !open;
+    return;
+  }
+  const sb = e.target.closest("[data-sort]");
+  if(sb){ S.sort = sb.dataset.sort; render(); }
+});
+document.addEventListener("change", e => {
+  if(e.target.id === "raceSel"){ S.id = e.target.value; render(); window.scrollTo({top:0}); }
+});
+$("reload").addEventListener("click", load);
+
+/* ---------- 読み込み ---------- */
+async function load(){
+  $("reload").disabled = true; $("upd").textContent = "読み込み中…";
+  try{
+    const res = await fetch(DATA_URL, {cache:"no-cache"});
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const j = await res.json();
+    if(!j || typeof j.races !== "object" || !Object.keys(j.races).length) throw new Error("races が空です");
+    S.store = j; render();
+    if(!navigator.onLine) $("app").insertAdjacentHTML("afterbegin", `<p class="notice info">オフラインのため、保存済みのデータを表示しています。</p>`);
+  }catch(err){
+    console.warn(err);
+    $("upd").textContent = "読み込み失敗";
+    if(!S.store) $("app").innerHTML = `<div class="err"><h2>データを読み込めませんでした</h2>
+      <p><code>${DATA_URL}</code> を取得できません（${esc(err.message)}）。<br>HTTPSで配信しているか、ファイルが存在するかを確認してください。<br>file:// では読み込めません。</p>
+      <button class="ibtn" type="button" onclick="load()">再読み込み</button></div>`;
+  }finally{ $("reload").disabled = false; }
+}
+load();
+if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
