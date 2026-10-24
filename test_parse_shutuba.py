@@ -24,5 +24,83 @@ class TestParseShutuba(unittest.TestCase):
         self.assertEqual(len(set(horse_ids)), 18)
 
 
+    def test_parse_history_returns_none_without_table(self):
+        from fetch_shutuba_with_history import parse_history
+
+        html = "<html><body><p>戦績データなし</p></body></html>"
+        result = parse_history(html)
+
+        self.assertIsNone(result)
+
+    def test_parse_history_parses_valid_table(self):
+        from fetch_shutuba_with_history import parse_history
+
+        html = """
+        <html><body>
+        <table class="db_h_race_results">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>開催</th>
+              <th>レース名</th>
+              <th>頭数</th>
+              <th>枠番</th>
+              <th>馬番</th>
+              <th>オッズ</th>
+              <th>人気</th>
+              <th>着順</th>
+              <th>騎手</th>
+              <th>斤量</th>
+              <th>距離</th>
+              <th>馬場</th>
+              <th>タイム</th>
+              <th>着差</th>
+              <th>通過</th>
+              <th>上り</th>
+              <th>馬体重</th>
+              <th>天気</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>2025/05/04</td>
+              <td>東京</td>
+              <td><a href="/race/202505020511/">テストレース</a></td>
+              <td>16</td>
+              <td>3</td>
+              <td>5</td>
+              <td>4.2</td>
+              <td>2</td>
+              <td>1</td>
+              <td>テスト騎手</td>
+              <td>57.0</td>
+              <td>芝1600</td>
+              <td>良</td>
+              <td>1:32.5</td>
+              <td>-0.2</td>
+              <td>3-3</td>
+              <td>34.1</td>
+              <td>480(+2)</td>
+              <td>晴</td>
+            </tr>
+          </tbody>
+        </table>
+        </body></html>
+        """
+
+        result = parse_history(html)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["date"], "2025-05-04")
+        self.assertEqual(result[0]["race_id"], "202505020511")
+        self.assertEqual(result[0]["finish_pos"], 1)
+        self.assertEqual(result[0]["surface"], "芝")
+        self.assertEqual(result[0]["distance_m"], 1600)
+        self.assertEqual(result[0]["time_sec"], 92.5)
+        self.assertEqual(result[0]["body_weight"], 480)
+        self.assertEqual(result[0]["body_weight_diff"], 2)
+
+
 if __name__ == "__main__":
     unittest.main()
