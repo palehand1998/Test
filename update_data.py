@@ -2,6 +2,7 @@ import os
 import json
 import traceback
 from google import genai
+from pathlib import Path
 
 def main():
     try:
@@ -10,43 +11,68 @@ def main():
             print("Error: GEMINI_API_KEY が設定されていません。")
             return
 
-        print("Gemini クライアントを初期化中 (AQキー対応)...")
+        print("Gemini クライアントを初期化中...")
         client = genai.Client(api_key=api_key)
 
-        prompt = """
+        # 新しいスキーマの raw_race_posts.json からデータを読み込む
+        input_path = Path("raw_race_posts.json")
+        if not input_path.exists():
+            print("Error: raw_race_posts.json が見つかりません。")
+            return
+
+        with input_path.open(encoding="utf-8") as f:
+            raw_data = json.load(f)
+
+        race_info = raw_data.get("race", {})
+        posts = raw_data.get("posts", [])
+        race_id = raw_data.get("target_race_id", "unknown")
+
+        # Geminiへ渡すプロンプトデータの構築
+        prompt_data = {
+            "race_id": race_id,
+            "race": race_info,
+            "posts": posts,
+        }
+
+        prompt = f"""
 あなたは競馬のデータ分析AIです。
-以下のJSON構造に完全に一致するデータのみを出力してください。
+提供された以下の競馬データ（出走馬情報および掲示板投稿など）を分析し、
+指定されたJSON構造に完全に一致するデータのみを出力してください。
 Markdownのコードブロック（```json ... ```）や、前後の挨拶・解説文は一切含めず、純粋なJSON文字列だけを出力してください。
 
+【制約事項】
+- 投稿者の意見を確定した事実として扱わないこと
+- 欠損値を勝手に推測で補完しないこと
+- 推測と客観的データを明確に区別すること
+
+【入力データ】
+{json.dumps(prompt_data, ensure_ascii=False, indent=2)}
+
 【出力すべきJSON構造】
-{
+{{
   "summaries": [
-    {
-      "race_id": "tokyo11",
-      "updated_at": "開催当日 14:30更新",
-      "post_count": 1250,
+    {{
+      "race_id": "{race_id}",
+      "updated_at": "開催当日 最新更新",
+      "post_count": {len(posts)},
       "dark_horses": [
-        {"num": 10, "comment": "追い切りの気配が抜群に良く、穴党からの支持が急増しています。", "heat": 4},
-        {"num": 5, "comment": "前走の不利が大きかったため、今回は見直す声が多いです。", "heat": 3}
+        {{"num": 10, "comment": "追い切りの気配や投稿での評価に基づくコメント", "heat": 4}}
       ],
-      "going": {
+      "going": {{
         "trend": "outside",
         "reports": [
-          {"time": "15分前", "text": "直線の外めを伸びる馬が目立ち始めました。"},
-          {"time": "40分前", "text": "内ラチ沿いもまだ耐えておりフラットな状態です。"}
+          {{"time": "直近", "text": "馬場や展開に関するレポート"}}
         ]
-      },
+      }},
       "views": [
-        {"tag": "展開", "text": "先行馬が競り合う形になり、差し馬に展開が向きそう。", "likes": 112},
-        {"tag": "馬場", "text": "外差しが徐々に決まり出す馬場コンディション。", "likes": 84}
+        {{"tag": "展開", "text": "ファンの見解や展開予想の要約", "likes": 100}}
       ]
-    }
+    }}
   ]
-}
+}}
 """
 
-        print("Gemini APIにリクエストを送信中 (gemini-3.8-flash)...")
-        # ★ここで最新のモデルを指定します
+        print(f"Gemini APIにリクエストを送信中 (race_id: {race_id})...")
         response = client.models.generate_content(
             model='gemini-3.8-flash',
             contents=prompt,
@@ -54,6 +80,7 @@ Markdownのコードブロック（```json ... ```）や、前後の挨拶・解
         
         text = response.text.strip()
         
+        # クリーニング保険
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
