@@ -36,6 +36,8 @@ def main():
     print("HTML冒頭:", repr(html[:500]))
     print("HorseList件数:", html.count("HorseList"))
 
+    from bs4 import BeautifulSoup
+    
     race, horses = parse_shutuba(html, args.race_id)
 
     print("\n=== レース情報 ===")
