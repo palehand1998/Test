@@ -224,17 +224,18 @@ def parse_results(soup):
             row, ["Mgn"], 8
         ) or None
 
+        # 人気順位は専用のセルから取得する
         popularity_text = get_cell_by_class(
             row, ["OddsPeople", "Ninki"], 9
         )
         popularity = integer(popularity_text)
 
-        # オッズと人気は別々のセルから取得する。
-        # 実際のセルに数値がない場合は推測せずNoneにする。
-        odds_text = get_cell_by_class(
-            row, ["Odds"], 10
-        )
-        win_odds = number(odds_text)
+        # 単勝オッズは「Odds」だけで探さない。
+        # 「Odds」だけだと人気順位のセルが先に選ばれるため、
+        # 実際の単勝オッズを示す「Odds Txt_R」を指定する。
+        odds_element = row.select_one("td.Odds.Txt_R")
+        odds_text = text(odds_element) if odds_element else ""
+        win_odds = number(odds_text) if odds_text else None
 
         last_3f_text = get_cell_by_class(
             row, ["Agari", "Last3F"], 11
