@@ -11,7 +11,7 @@ from fetch_shutuba_with_history import (
 class TestParseShutuba(unittest.TestCase):
     def test_daihonten_shutuba_has_18_horses(self):
         race_id = "202505021211"
-        fetcher = Fetcher(user_agent="ShutubaParserTest/1.0")
+        fetcher = Fetcher(user_agent="ShutubaParserTest/1.0", sleep=0)
         html = fetcher.get(SHUTUBA_URL.format(race_id=race_id))
 
         race, horses = parse_shutuba(html, race_id)
