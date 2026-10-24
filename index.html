@@ -1,12 +1,359 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>テストアプリ</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10131c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="指数競馬">
+<title>指数競馬 | レース詳細</title>
+<style>
+:root{
+  --bg:#10131c; --panel:#181c28; --panel2:#1f2433; --line:#2a3043;
+  --text:#ebe8e2; --mute:#8d93a6; --gold:#d9b45b; --gold-d:#8a7236; --red:#e0685a;
+  --r:16px;
+  --font:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);
+  -webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+body{padding:env(safe-area-inset-top) 0 0;min-height:100vh;min-height:100dvh}
+.wrap{max-width:560px;margin:0 auto;padding:12px 14px calc(96px + env(safe-area-inset-bottom))}
+h1,h2,h3,p{margin:0}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 12px}
+.brand{font-size:15px;font-weight:700;letter-spacing:.04em;color:var(--gold)}
+.date{font-size:12px;color:var(--mute)}
+
+/* race select */
+.select{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.select select{appearance:none;-webkit-appearance:none;width:100%;background:transparent;border:0;color:var(--text);
+  font:700 22px/1.2 var(--font);padding:16px 48px 16px 18px;border-radius:var(--r);min-height:60px}
+.select select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.select::after{content:"";position:absolute;right:20px;top:50%;width:9px;height:9px;margin-top:-7px;
+  border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);pointer-events:none}
+.select option{font-size:17px;background:#fff;color:#000}
+
+/* conditions */
+.race-name{margin:18px 2px 10px;font-size:13px;color:var(--mute)}
+.race-name b{display:block;font-size:20px;color:var(--text);margin-bottom:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 4px}
+.chip{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:13px;white-space:nowrap}
+.chip.main{border-color:var(--gold-d);color:var(--gold);font-weight:700}
+
+/* sections */
+section{margin-top:26px}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;margin:0 2px 10px}
+.sec-h h2{font-size:17px;font-weight:700}
+.sec-h span{font-size:12px;color:var(--mute)}
+
+/* ranking */
+.rank{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.row{position:relative;display:grid;grid-template-columns:22px 34px 1fr auto;gap:10px;align-items:center;
+  padding:12px 14px;border-top:1px solid var(--line);min-height:62px}
+.row:first-child{border-top:0}
+.row.top1{background:linear-gradient(90deg,rgba(217,180,91,.12),transparent 70%)}
+.mark{font-size:18px;text-align:center;color:var(--gold);font-weight:700}
+.mark.dim{color:var(--mute);font-size:13px}
+.num{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:16px;
+  font-variant-numeric:tabular-nums;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.info{min-width:0}
+.hname{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jk{font-size:12px;color:var(--mute);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{height:4px;border-radius:2px;background:var(--panel2);margin-top:7px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:2px;background:var(--gold-d);width:0;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.top1 .bar i,.top2 .bar i,.top3 .bar i{background:var(--gold)}
+.score{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;text-align:right;line-height:1}
+.score small{display:block;font-size:10px;font-weight:500;color:var(--mute);margin-top:4px}
+
+/* analysis */
+.analysis{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 18px 6px}
+.analysis .lead{font-size:16px;line-height:1.7;font-weight:600;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.a-item{padding:14px 0;border-bottom:1px solid var(--line)}
+.a-item:last-child{border-bottom:0}
+.a-item h3{font-size:13px;color:var(--gold);margin-bottom:5px}
+.a-item p{font-size:14.5px;line-height:1.8;color:#cfccc6}
+.a-item.warn h3{color:var(--red)}
+
+/* bets */
+.bets{display:grid;gap:12px}
+.bet{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.bet.hero{border-color:var(--gold-d);background:linear-gradient(160deg,#232030,var(--panel) 60%)}
+.bet-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.bet-t{font-size:17px;font-weight:800}
+.badge{font-size:12px;padding:4px 10px;border-radius:999px;background:var(--panel2);color:var(--mute);border:1px solid var(--line)}
+.hero .badge{background:var(--gold);color:#241d08;border-color:var(--gold);font-weight:700}
+.combos{display:grid;gap:8px}
+.combo{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--panel2);border-radius:12px;padding:9px 10px}
+.combo .dash{color:var(--mute);font-size:12px}
+.combo .n{width:30px;height:30px;font-size:14px;border-radius:8px}
+.combo .amt{margin-left:auto;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.bet-note{font-size:13px;color:var(--mute);line-height:1.7;margin-top:11px}
+
+.summary{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding:16px 18px;
+  border-radius:var(--r);background:var(--panel2);border:1px dashed var(--gold-d)}
+.summary span{font-size:13px;color:var(--mute)}
+.summary b{font-size:22px;font-variant-numeric:tabular-nums}
+.disc{margin-top:22px;font-size:11px;line-height:1.7;color:var(--mute);text-align:center;padding:0 10px}
+
+/* bottom bar */
+.bar-b{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+  background:rgba(16,19,28,.88);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.bar-b div{max-width:560px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{height:52px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);color:var(--text);
+  font:700 16px var(--font);cursor:pointer}
+.btn.pri{background:var(--gold);color:#241d08;border-color:var(--gold)}
+.btn:active{transform:scale(.98)}
+.btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;
+  background:var(--text);color:#111;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:700;
+  transition:.25s;pointer-events:none;z-index:9;white-space:nowrap}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:360px){.score{font-size:21px}.hname{font-size:15px}.select select{font-size:19px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
 </head>
 <body>
-    <h1>うまく表示されました！</h1>
-    <p>これはスマホで動く一番シンプルなHTMLファイルです。</p>
+<div class="wrap">
+  <div class="top"><div class="brand">指数競馬</div><div class="date" id="today"></div></div>
+
+  <label class="select" aria-label="レースを選択">
+    <select id="raceSel"></select>
+  </label>
+
+  <div class="race-name" id="raceName"></div>
+  <div class="chips" id="conds"></div>
+
+  <section>
+    <div class="sec-h"><h2>予想指数ランキング</h2><span id="fieldCount"></span></div>
+    <div class="rank" id="rank"></div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>レース分析</h2><span>AI解析</span></div>
+    <div class="analysis" id="analysis"></div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>推奨買い目</h2><span id="betCount"></span></div>
+    <div class="bets" id="bets"></div>
+    <div class="summary"><span>推奨購入額の合計</span><b id="total"></b></div>
+    <p class="disc">指数・買い目はモックデータによる表示例です。馬券は20歳になってから。購入は自己責任でお願いします。</p>
+  </section>
+</div>
+
+<div class="bar-b"><div>
+  <button class="btn" id="shareBtn" type="button">買い目をコピー</button>
+  <button class="btn pri" id="nextBtn" type="button">次のレースへ</button>
+</div></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ===== モックデータ（全て架空） ===== */
+const RACES = [
+  {
+    id:"tokyo11", label:"東京11R", name:"秋晴ステークス", grade:"G2", start:"15:45",
+    cond:{surface:"芝",dist:1600,going:"良",weather:"晴",course:"左回り",field:10,cls:"3歳以上オープン"},
+    horses:[
+      {n:4,name:"ソラノカケラ",jk:"ルメール",s:94.2},
+      {n:7,name:"ミッドナイトアリア",jk:"川田将雅",s:91.8},
+      {n:2,name:"ブリリアントロード",jk:"戸崎圭太",s:88.5},
+      {n:9,name:"キングズレガシー",jk:"横山武史",s:84.1},
+      {n:5,name:"ハルカゼノユメ",jk:"坂井瑠星",s:79.6},
+      {n:1,name:"ローズクォーツ",jk:"松山弘平",s:74.3},
+      {n:10,name:"サンライズバレット",jk:"岩田望来",s:70.9},
+      {n:3,name:"アサヒノマイ",jk:"津村明秀",s:66.2},
+      {n:8,name:"テンカイチバン",jk:"丹内祐次",s:61.7},
+      {n:6,name:"グレイスフルムーン",jk:"菅原明良",s:57.4}
+    ],
+    lead:"先行力と上がり性能を兼ね備えた④ソラノカケラが指数トップ。②③を相手に、堅実な馬連・3連複中心の構成を推奨します。",
+    notes:[
+      ["展開予想","逃げ候補は⑨キングズレガシーと⑤ハルカゼノユメ。前半600mは34秒台前半の平均ペースと予測し、先行〜好位で運べる馬に有利な流れです。"],
+      ["注目馬","④ソラノカケラは直近3走すべて上がり3F上位。東京芝1600mの実績も高く、安定感は今回のメンバーで頭ひとつ抜けています。⑦ミッドナイトアリアは外枠から末脚を伸ばすタイプで、展開次第では逆転も。"],
+      ["馬場傾向","良馬場で内外の差は小さく、直線で馬群がばらければ外差しも届く状態です。"],
+      ["懸念点","②ブリリアントロードは休み明け初戦で仕上がりに不安が残ります。⑨は前走で逃げて消耗しており、評価を一段下げました。",1]
+    ],
+    bets:[
+      {type:"馬連",tag:"本線",hero:1,combos:[[4,7,1500],[4,2,1000]],note:"指数上位3頭の組み合わせ。④を軸に、②⑦へ厚めに配分します。"},
+      {type:"ワイド",tag:"保険",combos:[[4,9,800],[7,2,700]],note:"的中率を高めるための押さえ。人気薄の⑨が絡むと妙味が出ます。"},
+      {type:"3連複",tag:"妙味",combos:[[4,7,2,600],[4,7,9,400],[4,2,5,300]],note:"上位3頭の3連複を軸に、④⑦から⑨・⑤へ流して配当を狙います。"}
+    ]
+  },
+  {
+    id:"nakayama11", label:"中山11R", name:"アルカディアカップ", grade:"G3", start:"15:25",
+    cond:{surface:"芝",dist:2000,going:"稍重",weather:"曇",course:"右回り",field:9,cls:"3歳以上オープン"},
+    horses:[
+      {n:6,name:"ストームブレイカー",jk:"武豊",s:92.6},
+      {n:3,name:"ヴェールオブナイト",jk:"レーン",s:89.4},
+      {n:8,name:"カゼノトビラ",jk:"田辺裕信",s:85.7},
+      {n:1,name:"ゴールデンシーズン",jk:"福永祐一",s:80.2},
+      {n:5,name:"アイボリーコースト",jk:"石橋脩",s:76.8},
+      {n:9,name:"ナナイロノウタ",jk:"三浦皇成",s:71.5},
+      {n:2,name:"ブルームフィールド",jk:"木幡巧也",s:65.9},
+      {n:7,name:"ペルセウスノヒカリ",jk:"丸山元気",s:62.3},
+      {n:4,name:"ミナモノツキ",jk:"鮫島克駿",s:58.0}
+    ],
+    lead:"稍重の中山2000mはタフな持久力勝負。スタミナ指数で上回る⑥ストームブレイカーを中心視します。",
+    notes:[
+      ["展開予想","内回りでコーナー6回の設計。ペースが落ち着けば先行勢が残りやすく、③⑧の好位勢に注意が必要です。"],
+      ["注目馬","⑥は道悪実績が豊富で、重馬場のレースで連対を外していません。③は鋭い瞬発力が武器ですが、馬場が渋ると少し割引です。"],
+      ["馬場傾向","雨の影響で内側がやや荒れ気味。3〜4コーナーで外を回しても差は詰められる状態です。"],
+      ["懸念点","⑧カゼノトビラは右回りでの勝ち鞍がなく、コース替わりが課題。",1]
+    ],
+    bets:[
+      {type:"馬連",tag:"本線",hero:1,combos:[[6,3,1800],[6,8,900]],note:"⑥を軸に、道悪適性の高さを素直に評価した組み合わせです。"},
+      {type:"3連複",tag:"妙味",combos:[[6,3,8,700],[6,3,1,500]],note:"上位勢に⑧と⑥を加えた構成で、3着争いも想定します。"}
+    ]
+  },
+  {
+    id:"kyoto11", label:"京都11R", name:"鴨川ダッシュ", grade:"OP", start:"15:35",
+    cond:{surface:"ダ",dist:1200,going:"重",weather:"小雨",course:"右回り",field:12,cls:"4歳以上オープン"},
+    horses:[
+      {n:11,name:"ライジングフレア",jk:"浜中俊",s:93.0},
+      {n:5,name:"カミナリスプリント",jk:"幸英明",s:90.1},
+      {n:2,name:"ブラックオパール",jk:"藤岡佑介",s:86.4},
+      {n:8,name:"チェリーブロッサム",jk:"北村友一",s:82.9},
+      {n:12,name:"ダイナミックラン",jk:"池添謙一",s:78.8},
+      {n:3,name:"トウキョウノヨル",jk:"和田竜二",s:73.1},
+      {n:6,name:"ワイルドカード",jk:"岩田康誠",s:69.5},
+      {n:1,name:"エンジェルハート",jk:"西村淳也",s:64.7},
+      {n:9,name:"スナアラシ",jk:"団野大成",s:60.2},
+      {n:7,name:"オオゾラノカナタ",jk:"小沢大仁",s:55.9},
+      {n:10,name:"アマテラスダンス",jk:"角田大河",s:52.3},
+      {n:4,name:"ツキカゲノマイ",jk:"古川吉洋",s:48.0}
+    ],
+    lead:"重馬場のダート短距離は前残りの傾向。テンの速い⑪ライジングフレアと⑤の先行2頭を軸に組み立てます。",
+    notes:[
+      ["展開予想","⑪と⑤がハナを主張しそう。前半3Fは33秒台の速い流れですが、脚抜きが良いため前の馬が止まりにくい馬場です。"],
+      ["注目馬","⑪は外枠でも二の脚が速く、ダート1200mで3勝。②ブラックオパールは差しに回れば一発の魅力があります。"],
+      ["懸念点","⑧は重馬場でのパフォーマンスが低下する傾向があり、指数を割り引いています。",1]
+    ],
+    bets:[
+      {type:"馬連",tag:"本線",hero:1,combos:[[11,5,1500],[11,2,1000]],note:"先行力上位の⑪を軸に、⑤②へ。"},
+      {type:"3連複",tag:"妙味",combos:[[11,5,2,800],[11,5,8,400],[11,5,12,300]],note:"逃げ・先行の2頭を軸に、3着候補を広めに押さえます。"}
+    ]
+  }
+];
+
+/* ===== 枠色（JRA基準） ===== */
+const GATE = [
+  {bg:"#f4f4f2",fg:"#111"},{bg:"#1a1a1a",fg:"#fff"},{bg:"#d6362f",fg:"#fff"},{bg:"#2e6fd1",fg:"#fff"},
+  {bg:"#f2cf2e",fg:"#111"},{bg:"#2f9a4e",fg:"#fff"},{bg:"#ee8a1d",fg:"#111"},{bg:"#ee86b4",fg:"#111"}
+];
+function gateOf(num,total){
+  if(total<=8) return num-1;
+  const single = 16-total;
+  return num<=single ? num-1 : single + Math.ceil((num-single)/2) - 1;
+}
+const MARKS = ["◎","○","▲","△","☆"];
+const $ = id => document.getElementById(id);
+const yen = v => "¥" + v.toLocaleString("ja-JP");
+
+let cur = 0;
+
+function numBadge(n,total,cls){
+  const g = GATE[Math.min(7,gateOf(n,total))];
+  return `<span class="num ${cls||""}" style="background:${g.bg};color:${g.fg}">${n}</span>`;
+}
+
+function render(i){
+  cur = i;
+  const r = RACES[i], c = r.cond, total = c.field;
+  $("raceName").innerHTML = `<b>${r.name}（${r.grade}）</b>発走 ${r.start}`;
+  $("conds").innerHTML = [
+    [`${c.surface}${c.dist}m`,1],[`${c.going}馬場`,1],[c.weather],[c.course],[`${c.field}頭立て`],[c.cls]
+  ].map(([t,m]) => `<span class="chip${m?" main":""}">${t}</span>`).join("");
+
+  const sorted = [...r.horses].sort((a,b) => b.s - a.s);
+  const max = sorted[0].s;
+  $("fieldCount").textContent = `${sorted.length}頭を表示`;
+  $("rank").innerHTML = sorted.map((h,k) => `
+    <div class="row${k<3?` top${k+1}`:""}">
+      <div class="mark${k>4?" dim":""}">${MARKS[k]||k+1}</div>
+      ${numBadge(h.n,total)}
+      <div class="info">
+        <div class="hname">${h.name}</div>
+        <div class="jk">${h.jk}騎手</div>
+        <div class="bar"><i data-w="${(h.s/max*100).toFixed(1)}"></i></div>
+      </div>
+      <div class="score">${h.s.toFixed(1)}<small>指数</small></div>
+    </div>`).join("");
+  requestAnimationFrame(() => requestAnimationFrame(() =>
+    document.querySelectorAll(".bar i").forEach(e => e.style.width = e.dataset.w + "%")));
+
+  $("analysis").innerHTML =
+    `<p class="lead">${r.lead}</p>` +
+    r.notes.map(([t,p,w]) => `<div class="a-item${w?" warn":""}"><h3>${t}</h3><p>${p}</p></div>`).join("");
+
+  let sum = 0, pts = 0;
+  $("betCount").textContent = `${r.bets.length}券種`;
+  $("bets").innerHTML = r.bets.map(b => {
+    const rows = b.combos.map(cb => {
+      const amt = cb[cb.length-1], nums = cb.slice(0,-1);
+      sum += amt; pts++;
+      return `<div class="combo">${nums.map((n,k) =>
+        (k?'<span class="dash">－</span>':'') + numBadge(n,total,"n")).join("")}
+        <span class="amt">${yen(amt)}</span></div>`;
+    }).join("");
+    return `<div class="bet${b.hero?" hero":""}">
+      <div class="bet-h"><span class="bet-t">${b.type}</span><span class="badge">${b.tag}</span></div>
+      <div class="combos">${rows}</div><p class="bet-note">${b.note}</p></div>`;
+  }).join("");
+  $("total").textContent = `${yen(sum)}（${pts}点）`;
+  try{ localStorage.setItem("lastRace", r.id); }catch(e){}
+}
+
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+function betText(){
+  const r = RACES[cur];
+  const lines = [`${r.label} ${r.name}`];
+  r.bets.forEach(b => b.combos.forEach(cb => {
+    lines.push(`${b.type} ${cb.slice(0,-1).join("-")}  ${yen(cb[cb.length-1])}`);
+  }));
+  return lines.join("\n");
+}
+
+/* ===== 初期化 ===== */
+const sel = $("raceSel");
+sel.innerHTML = RACES.map((r,i) => `<option value="${i}">${r.label}　${r.name}</option>`).join("");
+sel.addEventListener("change", () => { render(+sel.value); window.scrollTo({top:0,behavior:"smooth"}); });
+
+$("nextBtn").addEventListener("click", () => {
+  const n = (cur + 1) % RACES.length;
+  sel.value = n; render(n); window.scrollTo({top:0,behavior:"smooth"});
+});
+$("shareBtn").addEventListener("click", async () => {
+  const text = betText();
+  try{
+    if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); }
+    else{
+      const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta);
+      ta.select(); document.execCommand("copy"); ta.remove();
+    }
+    toast("買い目をコピーしました");
+  }catch(e){ toast("コピーできませんでした"); }
+});
+
+const d = new Date();
+$("today").textContent = `${d.getMonth()+1}月${d.getDate()}日（${"日月火水木金土"[d.getDay()]}）`;
+
+let start = 0;
+try{
+  const last = localStorage.getItem("lastRace");
+  const idx = RACES.findIndex(r => r.id === last);
+  if(idx >= 0) start = idx;
+}catch(e){}
+sel.value = start;
+render(start);
+</script>
 </body>
 </html>
