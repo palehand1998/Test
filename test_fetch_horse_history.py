@@ -59,34 +59,59 @@ class TestSelectHistory(unittest.TestCase):
             "2025-06-08",
             3,
         )
-        self.assertEqual(result, [])class TestAtomicWriteJson(unittest.TestCase):
-def test_writes_json_and_creates_parent_directory(self):
-import json
-import tempfile
-from pathlib import Path
+        self.assertEqual(result, [])
 
-    from fetch_horse_history import atomic_write_json
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "nested" / "history.json"
-        data = {
-            "schema_version": 1,
-            "races": {
-                "202505021211": {
-                    "horses": {
-                        "1234567890": {
-                            "history_status": "ok",
-                            "past_results": [],
+
+class TestAtomicWriteJson(unittest.TestCase):
+    def test_writes_json_and_creates_parent_directory(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import atomic_write_json
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "nested" / "history.json"
+            data = {
+                "schema_version": 1,
+                "races": {
+                    "202505021211": {
+                        "horses": {
+                            "1234567890": {
+                                "history_status": "ok",
+                                "past_results": [],
+                            }
                         }
                     }
-                }
-            },
-        }
-        atomic_write_json(path, data, backup=False)
-        loaded = json.loads(path.read_text(encoding="utf-8"))
-        self.assertEqual(loaded, data)
-def test_preserves_previous_file_as_backup(self):
-    import json
-    import tempfile
+                },
+            }
+        self.assertEqual(result, [])
+
+
+class TestAtomicWriteJson(unittest.TestCase):
+    def test_writes_json_and_creates_parent_directory(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import atomic_write_json
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "nested" / "history.json"
+            data = {
+                "schema_version": 1,
+                "races": {
+                    "202505021211": {
+                        "horses": {
+                            "1234567890": {
+                                "history_status": "ok",
+                                "past_results": [],
+                            }
+                        }
+                    }
+                },
+            }
+            atomic_write_json(path, data, backup=False)
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(loaded, data)
     from pathlib import Path
     from fetch_horse_history import atomic_write_json
     with tempfile.TemporaryDirectory() as tmp:
