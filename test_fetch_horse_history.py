@@ -330,104 +330,6 @@ class TestExistingOutputValidation(unittest.TestCase):
             )
             mock_fetcher.assert_not_called()
 
-class TestArgumentValidation(unittest.TestCase):
-    def test_zero_cache_ttl_is_rejected(self):
-        from unittest.mock import patch
-        from fetch_horse_history import main
-
-        with patch(
-            "sys.stderr",
-        ):
-            with self.assertRaises(SystemExit) as ctx:
-                main([
-                    "202505021211",
-                    "--cache-ttl-hours", "0",
-                ])
-
-        self.assertEqual(ctx.exception.code, 2)
-
-    def test_negative_cache_ttl_is_rejected(self):
-        from unittest.mock import patch
-        from fetch_horse_history import main
-
-        with patch("sys.stderr"):
-            with self.assertRaises(SystemExit) as ctx:
-                main([
-                    "202505021211",
-                    "--cache-ttl-hours", "-1",
-                ])
-
-        self.assertEqual(ctx.exception.code, 2)
-
-    def test_zero_history_is_rejected(self):
-        from unittest.mock import patch
-        from fetch_horse_history import main
-
-        with patch("sys.stderr"):
-            with self.assertRaises(SystemExit) as ctx:
-                main([
-                    "202505021211",
-                    "--history", "0",
-                ])
-
-        self.assertEqual(ctx.exception.code, 2)
-
-    def test_negative_history_is_rejected(self):
-        from unittest.mock import patch
-        from fetch_horse_history import main
-
-        with patch("sys.stderr"):
-            with self.assertRaises(SystemExit) as ctx:
-                main([
-                    "202505021211",
-                    "--history", "-1",
-                ])
-
-        self.assertEqual(ctx.exception.code, 2)
-
-    def test_invalid_race_id_is_rejected(self):
-        from unittest.mock import patch
-        from fetch_horse_history import main
-
-        with patch("sys.stderr"):
-            with self.assertRaises(SystemExit) as ctx:
-                main(["12345"])
-
-        self.assertEqual(ctx.exception.code, 2)
-
-    def test_non_numeric_race_id_is_rejected(self):
-        from unittest.mock import patch
-        from fetch_horse_history import main
-
-        with patch("sys.stderr"):
-            with self.assertRaises(SystemExit) as ctx:
-                main(["2025AB021211"])
-
-        self.assertEqual(ctx.exception.code, 2)
-
-    def test_thirteen_digit_race_id_is_rejected(self):
-        from unittest.mock import patch
-        from fetch_horse_history import main
-
-        with patch("sys.stderr"):
-            with self.assertRaises(SystemExit) as ctx:
-                main(["2025050212111"])
-
-        self.assertEqual(ctx.exception.code, 2)
-
-    def test_valid_race_id_passes_validation(self):
-        from unittest.mock import patch
-        from fetch_horse_history import main
-
-        with patch("sys.stderr"):
-            result = main([
-                "202505021211",
-                "--in",
-                "file_that_does_not_exist.json",
-            ])
-
-        self.assertEqual(result, 1)
-
     def test_invalid_previous_race_is_not_overwritten(self):
         import json
         import tempfile
@@ -526,6 +428,105 @@ class TestArgumentValidation(unittest.TestCase):
                 json.loads(output_path.read_text(encoding="utf-8")),
                 original,
             )
+
+
+class TestArgumentValidation(unittest.TestCase):
+    def test_zero_cache_ttl_is_rejected(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch(
+            "sys.stderr",
+        ):
+            with self.assertRaises(SystemExit) as ctx:
+                main([
+                    "202505021211",
+                    "--cache-ttl-hours", "0",
+                ])
+
+        self.assertEqual(ctx.exception.code, 2)
+
+    def test_negative_cache_ttl_is_rejected(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch("sys.stderr"):
+            with self.assertRaises(SystemExit) as ctx:
+                main([
+                    "202505021211",
+                    "--cache-ttl-hours", "-1",
+                ])
+
+        self.assertEqual(ctx.exception.code, 2)
+
+    def test_zero_history_is_rejected(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch("sys.stderr"):
+            with self.assertRaises(SystemExit) as ctx:
+                main([
+                    "202505021211",
+                    "--history", "0",
+                ])
+
+        self.assertEqual(ctx.exception.code, 2)
+
+    def test_negative_history_is_rejected(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch("sys.stderr"):
+            with self.assertRaises(SystemExit) as ctx:
+                main([
+                    "202505021211",
+                    "--history", "-1",
+                ])
+
+        self.assertEqual(ctx.exception.code, 2)
+
+    def test_invalid_race_id_is_rejected(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch("sys.stderr"):
+            with self.assertRaises(SystemExit) as ctx:
+                main(["12345"])
+
+        self.assertEqual(ctx.exception.code, 2)
+
+    def test_non_numeric_race_id_is_rejected(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch("sys.stderr"):
+            with self.assertRaises(SystemExit) as ctx:
+                main(["2025AB021211"])
+
+        self.assertEqual(ctx.exception.code, 2)
+
+    def test_thirteen_digit_race_id_is_rejected(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch("sys.stderr"):
+            with self.assertRaises(SystemExit) as ctx:
+                main(["2025050212111"])
+
+        self.assertEqual(ctx.exception.code, 2)
+
+    def test_valid_race_id_passes_validation(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch("sys.stderr"):
+            result = main([
+                "202505021211",
+                "--in",
+                "file_that_does_not_exist.json",
+            ])
+
+        self.assertEqual(result, 1)
 
 if __name__ == "__main__":
     unittest.main()
