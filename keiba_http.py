@@ -17,7 +17,7 @@ HORSE_URL = "https://db.netkeiba.com/horse/{horse_id}/"
 
 DEFAULT_UA = (
     "Mozilla/5.0 (compatible; keiba-pwa-personal/0.1; "
-    "+contact:your-email@example.com)"
+    "+contact:coelacanth1014@gmail.com)"
 )
 
 
