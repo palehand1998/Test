@@ -420,13 +420,26 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     if out.exists():
         try:
-            existing = json.loads(out.read_text(encoding="utf-8"))
-            if isinstance(existing.get("races"), dict):
-                store = existing
-        except (OSError, json.JSONDecodeError, AttributeError):
-            log.error("既存の履歴JSONを読み込めません。保存を中止します")
-            return 1
+            existing = json.loads(
+                out.read_text(encoding="utf-8")
+            )
 
+            if (
+                not isinstance(existing, dict)
+                or not isinstance(existing.get("races"), dict)
+            ):
+                log.error(
+                    "既存の履歴JSONの形式が不正です。保存を中止します"
+                )
+                return 1
+
+            store = existing
+
+        except (OSError, json.JSONDecodeError):
+            log.error(
+                "既存の履歴JSONを読み込めません。保存を中止します"
+            )
+            return 1
     fetcher = Fetcher(
         args.sleep,
         args.user_agent,
