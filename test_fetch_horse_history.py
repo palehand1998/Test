@@ -154,5 +154,21 @@ class TestLoadShutuba(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_shutuba(path)
 
+    def test_missing_races(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import load_shutuba
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "shutuba.json"
+            path.write_text(
+                json.dumps({"other": "value"}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(ValueError):
+                load_shutuba(path)
+
 if __name__ == "__main__":
     unittest.main()
