@@ -232,5 +232,20 @@ class TestHorseHistoryStore(unittest.TestCase):
             store = HorseHistoryStore(Path(tmp), ttl_hours=168)
             self.assertIsNone(store.read("no_such_horse"))
 
+    def test_corrupt_cache_returns_none(self):
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import HorseHistoryStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HorseHistoryStore(Path(tmp), ttl_hours=168)
+            cache_file = Path(tmp) / "1234567890.json"
+            cache_file.write_text(
+                "{broken json",
+                encoding="utf-8",
+            )
+
+            self.assertIsNone(store.read("1234567890"))
+
 if __name__ == "__main__":
     unittest.main()
