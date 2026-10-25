@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """出馬表 + 各馬の過去N走を取得してJSONに保存する。
 
@@ -7,7 +8,7 @@
 
 注意:
     netkeibaのHTML構造やアクセス条件が変わると取得できない場合があります。
-    取得できなかった情報は推測せず、ステータスで区別します。
+    robots.txtで許可されていることを確認できない場合は取得しません。
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 from urllib import robotparser
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -38,14 +39,9 @@ SCHEMA_VERSION = 1
 SHUTUBA_URL = (
     "https://race.netkeiba.com/race/shutuba.html?race_id={race_id}"
 )
-
-# 競走馬の競走成績ページを使用
 HORSE_URL = "https://db.netkeiba.com/horse/result/{horse_id}/"
 
-DEFAULT_UA = (
-    "Mozilla/5.0 (compatible; keiba-pwa-personal/0.1)"
-)
-
+DEFAULT_UA = "Mozilla/5.0 (compatible; keiba-pwa-personal/0.1)"
 CACHE_KEEP_ROWS = 20
 
 log = logging.getLogger("shutuba")
@@ -91,15 +87,18 @@ def normalize_header(value: str) -> str:
 def to_int(value: Optional[str]) -> Optional[int]:
     if value is None:
         return None
-    m = re.search(r"-?\d+", nfkc(value).replace(",", ""))
-    return int(m.group()) if m else None
+    match = re.search(r"-?\d+", nfkc(value).replace(",", ""))
+    return int(match.group()) if match else None
 
 
 def to_float(value: Optional[str]) -> Optional[float]:
     if value is None:
         return None
-    m = re.search(r"-?\d+(?:\.\d+)?", nfkc(value).replace(",", ""))
-    return float(m.group()) if m else None
+    match = re.search(
+        r"-?\d+(?:\.\d+)?",
+        nfkc(value).replace(",", ""),
+    )
+    return float(match.group()) if match else None
 
 
 def text_of(node) -> Optional[str]:
@@ -116,7 +115,10 @@ def decode_html(content: bytes) -> str:
     return content.decode("utf-8", errors="replace")
 
 
-def first_text(soup: BeautifulSoup, selectors: list[str]) -> Optional[str]:
+def first_text(
+    soup: BeautifulSoup,
+    selectors: list[str],
+) -> Optional[str]:
     for selector in selectors:
         node = soup.select_one(selector)
         value = text_of(node)
@@ -126,24 +128,24 @@ def first_text(soup: BeautifulSoup, selectors: list[str]) -> Optional[str]:
 
 
 def parse_date(value: Optional[str]) -> Optional[str]:
-    """YYYY-MM-DD形式に変換する。"""
+    """日付をYYYY-MM-DD形式に変換する。"""
     if not value:
         return None
 
     value = nfkc(value)
-
-    m = re.search(
+    match = re.search(
         r"(\d{4})\s*[年/\-.]\s*(\d{1,2})\s*[月/\-.]\s*(\d{1,2})",
         value,
     )
 
-    if not m:
+    if not match:
         return None
 
-    year, month, day = map(int, m.groups())
+    year, month, day = map(int, match.groups())
 
     try:
-        return f"{year:04d}-{month:02d}-{day:02d}"
+        parsed = datetime(year, month, day)
+        return parsed.strftime("%Y-%m-%d")
     except ValueError:
         return None
 
@@ -194,7 +196,11 @@ class Fetcher:
             self.requests_made += 1
 
     def _allowed(self, url: str) -> bool:
+        """robots.txtの状態をログに記録し、許可されたURLのみ取得する。"""
         if not self.respect_robots:
+            log.warning(
+                "robots.txt確認を無効化した設定です。取得先の許可条件を確認してください"
+            )
             return True
 
         host = urlparse(url).netloc
@@ -210,17 +216,41 @@ class Fetcher:
 
                 if response.status_code == 200:
                     parser.parse(response.text.splitlines())
+                    log.info("robots.txt取得成功: %s", robots_url)
                 else:
-                    # 取得できない場合は安全側に倒して取得しない
-                    parser.parse(["User-agent: *", "Disallow: /"])
+                    log.warning(
+                        "robots.txt取得失敗: HTTP %s / %s",
+                        response.status_code,
+                        robots_url,
+                    )
+                    # 許可条件を確認できないため、安全側で取得しない
+                    parser.parse([
+                        "User-agent: *",
+                        "Disallow: /",
+                    ])
 
             except requests.RequestException as exc:
-                log.warning("robots.txtの取得失敗: %s", exc)
-                parser.parse(["User-agent: *", "Disallow: /"])
+                log.warning(
+                    "robots.txt通信エラー: %s / %s",
+                    exc,
+                    robots_url,
+                )
+                parser.parse([
+                    "User-agent: *",
+                    "Disallow: /",
+                ])
 
             self.robots[host] = parser
 
-        return parser.can_fetch(self.ua, url)
+        allowed = parser.can_fetch(self.ua, url)
+
+        if not allowed:
+            log.warning(
+                "robots.txtのルールにより取得を中止: %s",
+                url,
+            )
+
+        return allowed
 
     def get(self, url: str) -> str:
         if not self._allowed(url):
@@ -273,7 +303,6 @@ def parse_shutuba(
     html: str,
     race_id: str,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-
     soup = BeautifulSoup(html, "html.parser")
 
     d1 = first_text(soup, [
@@ -281,12 +310,10 @@ def parse_shutuba(
         ".RaceData01",
         ".RaceData01 span",
     ])
-
     d2 = first_text(soup, [
         "div.RaceData02",
         ".RaceData02",
     ])
-
     title = text_of(soup.title)
 
     race_name = first_text(soup, [
@@ -296,7 +323,6 @@ def parse_shutuba(
         "h1.RaceName",
     ])
 
-    # RaceNameが見つからない場合、タイトルから候補を抽出
     if not race_name and title:
         cleaned_title = re.sub(
             r"\s*｜\s*競馬データベース.*$",
@@ -309,18 +335,13 @@ def parse_shutuba(
             cleaned_title,
             flags=re.IGNORECASE,
         )
-        if cleaned_title.strip():
-            race_name = clean(cleaned_title)
+        race_name = clean(cleaned_title)
 
     def rx(pattern: str, value: Optional[str], group: int = 1):
-        m = re.search(pattern, nfkc(value)) if value else None
-        return m.group(group) if m else None
+        match = re.search(pattern, nfkc(value)) if value else None
+        return match.group(group) if match else None
 
-    race_date = parse_date(title)
-
-    if not race_date:
-        race_date = parse_date(d2)
-
+    race_date = parse_date(title) or parse_date(d2)
     if not race_date:
         race_date = parse_date(
             first_text(soup, [
@@ -352,7 +373,6 @@ def parse_shutuba(
     horses: list[dict[str, Any]] = []
 
     table = soup.select_one("table.Shutuba_Table")
-
     if table is None:
         table = soup.select_one("table.RaceTable01")
 
@@ -360,7 +380,6 @@ def parse_shutuba(
         raise ParseError("出馬表テーブルが見つかりません")
 
     rows = table.select("tr.HorseList")
-
     if not rows:
         rows = [
             tr for tr in table.select("tr")
@@ -369,58 +388,53 @@ def parse_shutuba(
 
     for tr in rows:
         a_horse = tr.select_one('a[href*="/horse/"]')
-
         if a_horse is None:
             continue
 
         href = a_horse.get("href", "")
         horse_match = re.search(r"/horse/(\d+)", href)
-
         if not horse_match:
             continue
 
         horse_id = horse_match.group(1)
-
-        # 馬名リンク以外のリンクを拾わないよう、馬情報セルを優先
         horse_name = text_of(a_horse)
 
         td_barei = tr.select_one("td.Barei")
         sexage = nfkc(text_of(td_barei))
-
         sexage_match = re.search(r"([牡牝セ])\s*(\d+)", sexage)
 
-        # 馬体重
         weight_text = nfkc(text_of(tr.select_one("td.Weight")))
         body_weight_match = re.search(
             r"(\d{3})\s*[（(]\s*([+-]?\d+)\s*[）)]",
             weight_text,
         )
 
-        # 騎手
         jockey_link = tr.select_one('a[href*="/jockey/"]')
         jockey_href = jockey_link.get("href", "") if jockey_link else ""
-        jockey_match = re.search(r"/jockey/(?:[a-z]+/)*(\d{4,6})", jockey_href)
+        jockey_match = re.search(
+            r"/jockey/(?:[a-z]+/)*(\d{4,6})",
+            jockey_href,
+        )
 
-        # 斤量は斤量らしい数値のセルから取得
         weight_carried = None
         for td in tr.select("td"):
             candidate = to_float(text_of(td))
-            if candidate is not None and 40 <= candidate <= 70:
-                # 馬齢やオッズなどの誤検出を避けるため、
-                # 斤量クラスのセルを優先
-                classes = " ".join(td.get("class", []))
-                if "Barei" not in classes:
-                    if any(k in classes.lower() for k in ("weight", "carry", "kinryo")):
-                        weight_carried = candidate
-                        break
+            if candidate is None or not 40 <= candidate <= 70:
+                continue
 
-        if weight_carried is None:
-            # 一般的な出馬表では馬齢セルの直後が斤量セル
-            if td_barei:
-                next_td = td_barei.find_next_sibling("td")
-                candidate = to_float(text_of(next_td))
-                if candidate is not None and 40 <= candidate <= 70:
-                    weight_carried = candidate
+            classes = " ".join(td.get("class", []))
+            if "Barei" not in classes and any(
+                key in classes.lower()
+                for key in ("weight", "carry", "kinryo")
+            ):
+                weight_carried = candidate
+                break
+
+        if weight_carried is None and td_barei:
+            next_td = td_barei.find_next_sibling("td")
+            candidate = to_float(text_of(next_td))
+            if candidate is not None and 40 <= candidate <= 70:
+                weight_carried = candidate
 
         def cell_int(selector: str) -> Optional[int]:
             return to_int(text_of(tr.select_one(selector)))
@@ -428,9 +442,10 @@ def parse_shutuba(
         odds = to_float(text_of(
             tr.select_one("td.Popular, td.Odds, td[class*=Odds]")
         ))
-
         popularity = to_int(text_of(
-            tr.select_one("td.Popular_Ninki, td.Ninki, td[class*=Ninki]")
+            tr.select_one(
+                "td.Popular_Ninki, td.Ninki, td[class*=Ninki]"
+            )
         ))
 
         horses.append({
@@ -486,20 +501,26 @@ def _header_map(table) -> dict[str, int]:
     if header_row is None:
         return {}
 
-    headers = []
-    for cell in header_row.find_all(["th", "td"], recursive=False):
-        headers.append(normalize_header(cell.get_text(" ", strip=True)))
+    headers = [
+        normalize_header(cell.get_text(" ", strip=True))
+        for cell in header_row.find_all(["th", "td"], recursive=False)
+    ]
+    return {
+        name: index
+        for index, name in enumerate(headers)
+        if name
+    }
 
-    return {name: index for index, name in enumerate(headers) if name}
 
-
-def _find_column(columns: dict[str, int], *names: str) -> Optional[int]:
+def _find_column(
+    columns: dict[str, int],
+    *names: str,
+) -> Optional[int]:
     for name in names:
         target = normalize_header(name)
         if target in columns:
             return columns[target]
 
-    # 見出しの末尾に注釈などがついている場合も許容
     for existing, index in columns.items():
         for name in names:
             target = normalize_header(name)
@@ -511,13 +532,9 @@ def _find_column(columns: dict[str, int], *names: str) -> Optional[int]:
 
 def parse_history(html: str) -> Optional[list[dict[str, Any]]]:
     """競走成績テーブルを解析する。検出不能ならNoneを返す。"""
-
     soup = BeautifulSoup(html, "html.parser")
-
     tables = soup.select(
-        "table.db_h_race_results, "
-        "table.race_table_01, "
-        "table"
+        "table.db_h_race_results, table.race_table_01, table"
     )
 
     selected_table = None
@@ -525,7 +542,6 @@ def parse_history(html: str) -> Optional[list[dict[str, Any]]]:
 
     for table in tables:
         columns = _header_map(table)
-
         date_col = _find_column(columns, "日付")
         finish_col = _find_column(columns, "着順")
 
@@ -535,9 +551,7 @@ def parse_history(html: str) -> Optional[list[dict[str, Any]]]:
             break
 
     if selected_table is None:
-        log.warning(
-            "競走成績テーブルが見つかりません。HTML内のテーブル構造を確認してください"
-        )
+        log.warning("競走成績テーブルが見つかりません")
         return None
 
     col = {
@@ -570,8 +584,8 @@ def parse_history(html: str) -> Optional[list[dict[str, Any]]]:
         return text_of(get_cell(cells, key))
 
     rows: list[dict[str, Any]] = []
-
     body_rows = selected_table.select("tbody tr")
+
     if not body_rows:
         body_rows = [
             tr for tr in selected_table.select("tr")
@@ -580,13 +594,10 @@ def parse_history(html: str) -> Optional[list[dict[str, Any]]]:
 
     for tr in body_rows:
         cells = tr.find_all("td", recursive=False)
-
         if not cells:
             continue
 
-        date_raw = get_value(cells, "date")
-        race_date = parse_date(date_raw)
-
+        race_date = parse_date(get_value(cells, "date"))
         if not race_date:
             continue
 
@@ -614,7 +625,9 @@ def parse_history(html: str) -> Optional[list[dict[str, Any]]]:
             time_raw,
         )
 
-        body_weight_raw = nfkc(get_value(cells, "body_weight") or "")
+        body_weight_raw = nfkc(
+            get_value(cells, "body_weight") or ""
+        )
         body_weight_match = re.search(
             r"(\d{3})\s*[（(]\s*([+-]?\d+)\s*[）)]",
             body_weight_raw,
@@ -638,8 +651,12 @@ def parse_history(html: str) -> Optional[list[dict[str, Any]]]:
             "finish_raw": finish_raw,
             "finish_pos": to_int(finish_raw),
             "jockey": get_value(cells, "jockey"),
-            "weight_carried": to_float(get_value(cells, "weight_carried")),
-            "surface": distance_match.group(1) if distance_match else None,
+            "weight_carried": to_float(
+                get_value(cells, "weight_carried")
+            ),
+            "surface": (
+                distance_match.group(1) if distance_match else None
+            ),
             "distance_m": (
                 int(distance_match.group(2))
                 if distance_match else None
@@ -697,7 +714,10 @@ def atomic_write_json(
             os.fsync(file.fileno())
 
         if backup and path.exists():
-            shutil.copy2(path, path.with_name(path.name + ".bak"))
+            shutil.copy2(
+                path,
+                path.with_name(path.name + ".bak"),
+            )
 
         os.replace(temp_path, path)
 
@@ -721,10 +741,8 @@ def load_store(path: Path) -> dict[str, Any]:
 
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-
         if not isinstance(data.get("races"), dict):
             raise ValueError("racesがオブジェクトではありません")
-
         return data
 
     except (json.JSONDecodeError, ValueError, AttributeError) as exc:
@@ -757,7 +775,6 @@ class HorseHistoryStore:
             return False
 
         fetched_epoch = entry.get("fetched_epoch", 0)
-
         if not isinstance(fetched_epoch, (int, float)):
             return False
 
@@ -780,7 +797,6 @@ class HorseHistoryStore:
             entry,
             backup=False,
         )
-
         return entry
 
 
@@ -795,10 +811,8 @@ def select_history(
     count: int,
 ) -> list[dict[str, Any]]:
     """対象レース自身・対象日以降を除外し、最大count走を返す。"""
-
     selected = []
 
-    # 日付の新しい順に処理
     sorted_rows = sorted(
         rows,
         key=lambda row: row.get("date") or "",
@@ -810,12 +824,10 @@ def select_history(
             continue
 
         row_date = row.get("date")
-
         if race_date and row_date and row_date >= race_date:
             continue
 
         selected.append(row)
-
         if len(selected) >= count:
             break
 
@@ -831,20 +843,17 @@ def fill_history(
     count: int,
 ) -> None:
     horse_id = horse["horse_id"]
-
     entry = cache.read(horse_id)
     status = "cache"
 
-    # 古い形式や、過去にテーブルを発見できなかったキャッシュは再取得
+    # テーブル未検出のキャッシュは再取得する
     if entry and not entry.get("has_table", False):
         entry = None
 
     if not cache.is_fresh(entry):
         history_url = HORSE_URL.format(horse_id=horse_id)
-
         html = fetcher.get(history_url)
         rows = parse_history(html)
-
         entry = cache.write(horse_id, rows)
         status = "ok"
 
@@ -859,17 +868,10 @@ def fill_history(
         return
 
     rows = entry.get("rows", [])
-
     if not isinstance(rows, list):
         rows = []
 
-    selected = select_history(
-        rows,
-        race_id,
-        race_date,
-        count,
-    )
-
+    selected = select_history(rows, race_id, race_date, count)
     if selected:
         status = "ok" if status == "ok" else "cache"
     else:
@@ -891,12 +893,10 @@ def build_race(
     previous_race: Optional[dict[str, Any]],
     limit_horses: Optional[int],
 ) -> tuple[dict[str, Any], bool]:
-
     html = fetcher.get(SHUTUBA_URL.format(race_id=race_id))
     race, horses = parse_shutuba(html, race_id)
 
     race_date = race_date_override or race.get("date")
-
     if race_date_override:
         race["date"] = race_date_override
 
@@ -971,7 +971,6 @@ def build_race(
 
         if horse.get("history_status") == "not_fetched":
             old = previous_horses.get(horse_id)
-
             if old and old.get("past_results"):
                 horse.update({
                     "history_status": "stale",
@@ -986,7 +985,6 @@ def build_race(
 
     race["history_depth"] = count
     race["horses"] = horses
-
     return race, blocked
 
 
@@ -1077,7 +1075,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         race_id for race_id in args.race_ids
         if not re.fullmatch(r"\d{12}", race_id)
     ]
-
     if invalid_ids:
         parser.error(f"race_idは12桁の数字です: {invalid_ids}")
 
@@ -1130,7 +1127,6 @@ def main(argv: Optional[list[str]] = None) -> int:
 
         store["races"][race_id] = race
         store["updated_at"] = now_iso()
-
         atomic_write_json(output_path, store)
 
         horses = race["horses"]
@@ -1158,14 +1154,12 @@ def main(argv: Optional[list[str]] = None) -> int:
             fetcher.requests_made,
         )
 
-        # レース名や日付が取れない場合も警告
         if not race.get("name"):
             log.warning("レース名が取得できていません")
 
         if not race.get("date"):
             log.warning("レース開催日が取得できていません")
 
-        # 履歴取得が全頭失敗なら、Actions側で成功扱いにしない
         active_horses = [
             horse for horse in horses
             if horse.get("horse_id") and not horse.get("scratched")
