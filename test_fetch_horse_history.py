@@ -365,6 +365,42 @@ def test_invalid_previous_horses_is_not_overwritten(self):
             original,
         )
 
+    def test_invalid_input_horses_is_skipped(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        from fetch_horse_history import main
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            input_path = root / "shutuba.json"
+            output_path = root / "history.json"
+
+            input_path.write_text(
+                json.dumps({
+                    "races": {
+                        "202505021211": {
+                            "date": "2025-05-04",
+                            "horses": "不正なデータ",
+                        }
+                    }
+                }),
+                encoding="utf-8",
+            )
+
+            with patch("fetch_horse_history.Fetcher") as mock_fetcher:
+                result = main([
+                    "202505021211",
+                    "--in", str(input_path),
+                    "--out", str(output_path),
+                    "--cache-dir", str(root / "cache"),
+                ])
+
+            self.assertEqual(result, 1)
+            mock_fetcher.assert_not_called()
+
 class TestArgumentValidation(unittest.TestCase):
 def test_zero_cache_ttl_is_rejected(self):
 from unittest.mock import patch
