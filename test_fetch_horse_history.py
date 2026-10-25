@@ -346,5 +346,15 @@ class TestArgumentValidation(unittest.TestCase):
 
         self.assertEqual(ctx.exception.code, 2)
 
+    def test_non_numeric_race_id_is_rejected(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch("sys.stderr"):
+            with self.assertRaises(SystemExit) as ctx:
+                main(["2025AB021211"])
+
+        self.assertEqual(ctx.exception.code, 2)
+
 if __name__ == "__main__":
     unittest.main()
