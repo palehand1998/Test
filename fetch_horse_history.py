@@ -453,7 +453,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             continue
 
         race_date = race_entry.get("date")
-        results = {}
+        previous_race = store["races"].get(rid, {})
+        results = dict(previous_race.get("horses", {}))
 
         for i, horse in enumerate(horses, 1):
             if not isinstance(horse, dict):
@@ -495,19 +496,20 @@ def main(argv: Optional[list[str]] = None) -> int:
 
             results[str(hid)] = history_horse
 
-        store["races"][rid] = {
-            "race_id": rid,
-            "date": race_date,
-            "history_depth": args.history,
-            "horses": results,
-        }
-        store["updated_at"] = now_iso()
+
+        if results:
+            store["races"][rid] = {
+                "race_id": rid,
+                "date": race_date,
+                "history_depth": args.history,
+                "horses": results,
+            }
+            store["updated_at"] = now_iso()
+            atomic_write_json(out, store)
+            log.info("保存しました: %s", out)
 
         if exit_code == 2:
             break
-
-        atomic_write_json(out, store)
-        log.info("保存しました: %s", out)
 
     return exit_code
 
