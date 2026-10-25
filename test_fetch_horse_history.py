@@ -140,8 +140,6 @@ class TestLoadShutuba(unittest.TestCase):
         from fetch_horse_history import load_shutuba
         with self.assertRaises(FileNotFoundError):
             load_shutuba(Path("this_file_does_not_exist.json"))
-    with self.assertRaises(FileNotFoundError):
-        load_shutuba(Path("this_file_does_not_exist.json"))
     def test_invalid_races(self):
         import json
         import tempfile
