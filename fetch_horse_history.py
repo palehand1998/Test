@@ -397,7 +397,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     if args.cache_ttl_hours <= 0:
         ap.error("--cache-ttl-hours は0より大きい値を指定してください")
-    
+
     if args.sleep < 1.0:
         log.warning("--sleep が短すぎるため1.0秒に引き上げます")
         args.sleep = 1.0
@@ -490,6 +490,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             return 1
 
         results = dict(previous_horses)
+        failed_horses = []
+
         for i, horse in enumerate(horses, 1):
             if not isinstance(horse, dict):
                 continue
@@ -530,6 +532,13 @@ def main(argv: Optional[list[str]] = None) -> int:
 
             results[str(hid)] = history_horse
 
+            # 過去成績の取得チェック
+            past_results = history_horse.get("past_results", [])
+            if (
+                history_horse.get("history_status") != "ok"
+                or len(past_results) != args.history
+            ):
+                failed_horses.append(str(hid))
 
         if results:
             store["races"][rid] = {
@@ -541,6 +550,20 @@ def main(argv: Optional[list[str]] = None) -> int:
             store["updated_at"] = now_iso()
             atomic_write_json(out, store)
             log.info("保存しました: %s", out)
+
+        # チェック結果を表示
+        if failed_horses:
+            log.warning(
+                "過去成績の要確認: %d頭（馬ID: %s）",
+                len(failed_horses),
+                ", ".join(failed_horses),
+            )
+            exit_code = max(exit_code, 1)
+        else:
+            log.info(
+                "チェックOK: 全頭の過去%d走を取得しました",
+                args.history,
+            )
 
         if exit_code == 2:
             break
