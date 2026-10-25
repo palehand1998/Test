@@ -12,6 +12,23 @@ from keiba_http import (
 
 
 class TestFetcher(unittest.TestCase):
+    @patch.object(Fetcher, "_raw_get")
+    def test_robots_non_200_stops_request(self, mock_get):
+        mock_get.return_value = Mock(status_code=503)
+
+        fetcher = Fetcher(
+            sleep=0,
+            user_agent="test-agent",
+            respect_robots=True,
+        )
+
+        with self.assertRaises(FetchError):
+            fetcher.get("https://example.com/test")
+
+        mock_get.assert_called_once_with(
+            "https://example.com/robots.txt"
+        )
+
     def make_fetcher(self):
         return Fetcher(
             sleep=0,
@@ -73,23 +90,6 @@ class TestFetcher(unittest.TestCase):
 
         self.assertEqual(result, "ok")
         self.assertEqual(mock_get.call_count, 2)
-
-    @patch.object(Fetcher, "_raw_get")
-    def test_robots_non_200_stops_request(self, mock_get):
-        mock_get.return_value = Mock(status_code=503)
-
-        fetcher = Fetcher(
-            sleep=0,
-            user_agent="test-agent",
-            respect_robots=True,
-        )
-
-        with self.assertRaises(FetchError):
-            fetcher.get("https://example.com/test")
-
-        mock_get.assert_called_once_with(
-            "https://example.com/robots.txt"
-        )
 
 if __name__ == "__main__":
     unittest.main()
