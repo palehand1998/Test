@@ -28,7 +28,28 @@ class TestFetcher(unittest.TestCase):
         mock_get.assert_called_once_with(
             "https://example.com/robots.txt"
         )
+    @patch.object(Fetcher, "_raw_get")
+    def test_robots_404_allows_fetch(self, mock_get):
+        robots_response = Mock(status_code=404)
+        page_response = Mock(
+            status_code=200,
+            content=b"test html",
+        )
+        mock_get.side_effect = [
+            robots_response,
+            page_response,
+        ]
 
+        fetcher = Fetcher(
+            sleep=0,
+            user_agent="test-agent",
+            respect_robots=True,
+        )
+
+        result = fetcher.get("https://example.com/test")
+
+        self.assertEqual(result, "test html")
+        self.assertEqual(mock_get.call_count, 2)
     def make_fetcher(self):
         return Fetcher(
             sleep=0,
