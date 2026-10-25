@@ -13,7 +13,7 @@ from keiba_common import decode_html
 log = logging.getLogger("shutuba")
 
 SHUTUBA_URL = "https://race.netkeiba.com/race/shutuba.html?race_id={race_id}"
-HORSE_URL = "https://db.netkeiba.com/horse/{horse_id}/"
+HORSE_URL = "https://db.netkeiba.com/horse/result/{horse_id}/"
 
 DEFAULT_UA = (
     "Mozilla/5.0 (compatible; keiba-pwa-personal/0.1; "
