@@ -328,7 +328,8 @@ def load_shutuba(path: Path) -> dict[str, Any]:
         )
 
     data = json.loads(path.read_text(encoding="utf-8"))
-
+    if not isinstance(data, dict):
+        raise ValueError("出馬表JSONの形式が不正です（オブジェクトではありません）")
     if not isinstance(data.get("races"), dict):
         raise ValueError(
             "出馬表JSONの形式が不正です（races がありません）"
