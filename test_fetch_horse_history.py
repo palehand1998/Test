@@ -476,5 +476,56 @@ class TestArgumentValidation(unittest.TestCase):
                 original,
             )
 
+    def test_invalid_previous_horses_is_not_overwritten(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            input_path = root / "shutuba.json"
+            output_path = root / "history.json"
+
+            input_path.write_text(
+                json.dumps({
+                    "races": {
+                        "202505021211": {
+                            "date": "2025-05-04",
+                            "horses": [],
+                        }
+                    }
+                }),
+                encoding="utf-8",
+            )
+
+            original = {
+                "schema_version": 1,
+                "races": {
+                    "202505021211": {
+                        "horses": ["不正なデータ"],
+                    }
+                },
+            }
+            output_path.write_text(
+                json.dumps(original),
+                encoding="utf-8",
+            )
+
+            with patch("fetch_horse_history.Fetcher"):
+                result = main([
+                    "202505021211",
+                    "--in", str(input_path),
+                    "--out", str(output_path),
+                    "--cache-dir", str(root / "cache"),
+                ])
+
+            self.assertEqual(result, 1)
+            self.assertEqual(
+                json.loads(output_path.read_text(encoding="utf-8")),
+                original,
+            )
+
 if __name__ == "__main__":
     unittest.main()
