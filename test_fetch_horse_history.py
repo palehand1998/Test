@@ -244,67 +244,76 @@ class TestLoadShutuba(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_shutuba(path)
                 
-class TestHorseHistoryStore(unittest.TestCase):
-def test_fresh_cache_is_valid(self):
-import tempfile
-import time
-from pathlib import Path
-from fetch_horse_history import HorseHistoryStore
 
-    with tempfile.TemporaryDirectory() as tmp:
-        store = HorseHistoryStore(Path(tmp), ttl_hours=168)
-        entry = {
-            "fetched_epoch": time.time(),
-            "rows": [],
-            "has_table": True,
-        }
-        self.assertTrue(store.is_fresh(entry))
-def test_old_cache_is_invalid(self):
-    import tempfile
-    import time
-    from pathlib import Path
-    from fetch_horse_history import HorseHistoryStore
-    with tempfile.TemporaryDirectory() as tmp:
-        store = HorseHistoryStore(Path(tmp), ttl_hours=168)
-        entry = {
-            "fetched_epoch": time.time() - (169 * 3600),
-            "rows": [],
-            "has_table": True,
-        }
-        self.assertFalse(store.is_fresh(entry))
-def test_write_and_read_cache(self):
-    import tempfile
-    from pathlib import Path
-    from fetch_horse_history import HorseHistoryStore
-    with tempfile.TemporaryDirectory() as tmp:
-        store = HorseHistoryStore(Path(tmp), ttl_hours=168)
-        rows = [
-            {"race_id": "202505021210", "date": "2025-05-25"}
-        ]
-        written = store.write("1234567890", rows)
-        loaded = store.read("1234567890")
-        self.assertEqual(loaded["rows"], rows)
-        self.assertEqual(loaded["has_table"], True)
-        self.assertEqual(written["rows"], rows)
-def test_missing_cache_returns_none(self):
-    import tempfile
-    from pathlib import Path
-    from fetch_horse_history import HorseHistoryStore
-    with tempfile.TemporaryDirectory() as tmp:
-        store = HorseHistoryStore(Path(tmp), ttl_hours=168)
-        self.assertIsNone(store.read("no_such_horse"))
-def test_corrupt_cache_returns_none(self):
-    import tempfile
-    from pathlib import Path
-    from fetch_horse_history import HorseHistoryStore
-    with tempfile.TemporaryDirectory() as tmp:
-        store = HorseHistoryStore(Path(tmp), ttl_hours=168)
-        cache_file = Path(tmp) / "1234567890.json"
-        cache_file.write_text(
-            "{broken json",
-            encoding="utf-8",
-        )
-        self.assertIsNone(store.read("1234567890"))
+class TestHorseHistoryStore(unittest.TestCase):
+    def test_fresh_cache_is_valid(self):
+        import tempfile
+        import time
+        from pathlib import Path
+        from fetch_horse_history import HorseHistoryStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HorseHistoryStore(Path(tmp), ttl_hours=168)
+            entry = {
+                "fetched_epoch": time.time(),
+                "rows": [],
+                "has_table": True,
+            }
+            self.assertTrue(store.is_fresh(entry))
+
+    def test_old_cache_is_invalid(self):
+        import tempfile
+        import time
+        from pathlib import Path
+        from fetch_horse_history import HorseHistoryStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HorseHistoryStore(Path(tmp), ttl_hours=168)
+            entry = {
+                "fetched_epoch": time.time() - (169 * 3600),
+                "rows": [],
+                "has_table": True,
+            }
+            self.assertFalse(store.is_fresh(entry))
+
+    def test_write_and_read_cache(self):
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import HorseHistoryStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HorseHistoryStore(Path(tmp), ttl_hours=168)
+            rows = [
+                {"race_id": "202505021210", "date": "2025-05-25"}
+            ]
+            written = store.write("1234567890", rows)
+            loaded = store.read("1234567890")
+            self.assertEqual(loaded["rows"], rows)
+            self.assertEqual(loaded["has_table"], True)
+            self.assertEqual(written["rows"], rows)
+
+    def test_missing_cache_returns_none(self):
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import HorseHistoryStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HorseHistoryStore(Path(tmp), ttl_hours=168)
+            self.assertIsNone(store.read("no_such_horse"))
+
+    def test_corrupt_cache_returns_none(self):
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import HorseHistoryStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HorseHistoryStore(Path(tmp), ttl_hours=168)
+            cache_file = Path(tmp) / "1234567890.json"
+            cache_file.write_text(
+                "{broken json",
+                encoding="utf-8",
+            )
+            self.assertIsNone(store.read("1234567890"))
 
 class TestSuccessfulHistorySave(unittest.TestCase):
     def test_history_is_saved_to_output_json(self):
