@@ -27,3 +27,6 @@ jobs:
 
       - name: Run parser tests
         run: python -m unittest -v test_fetch_shutuba.py
+
+      - name: Run shared utility tests
+        run: python -m unittest -v test_keiba_common.py
