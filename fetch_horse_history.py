@@ -394,6 +394,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.history < 1:
         ap.error("--history は1以上を指定してください")
 
+    if args.cache_ttl_hours <= 0:
+        ap.error("--cache-ttl-hours は0より大きい値を指定してください")
+    
     if args.sleep < 1.0:
         log.warning("--sleep が短すぎるため1.0秒に引き上げます")
         args.sleep = 1.0
