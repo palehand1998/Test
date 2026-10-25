@@ -85,13 +85,19 @@ class Fetcher:
                 response = self._raw_get(
                     f"https://{host}/robots.txt"
                 )
-                if response.status_code != 200:
+                if response.status_code == 404:
+                    log.warning(
+                        "robots.txt が見つかりません (404): %s",
+                        host,
+                    )
+                    rp.parse([])
+                elif response.status_code != 200:
                     raise FetchError(
                         f"robots.txt を確認できません: "
                         f"HTTP {response.status_code}"
                     )
-
-                rp.parse(response.text.splitlines())
+                else:
+                    rp.parse(response.text.splitlines())
 
             except requests.RequestException as exc:
                 raise FetchError(
