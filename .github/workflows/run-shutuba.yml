@@ -1,3 +1,4 @@
+
 name: Run Shutuba Fetcher
 
 "on":
@@ -6,7 +7,7 @@ name: Run Shutuba Fetcher
       race_id:
         description: "対象レースID (12桁)"
         required: true
-        default: "202505021211"
+        default: "202605021211"
 
 permissions:
   contents: write
@@ -29,7 +30,11 @@ jobs:
         run: python -m pip install requests beautifulsoup4
 
       - name: Fetch entry and past results
-        run: python fetch_shutuba_with_history.py "${{ inputs.race_id }}" --history 3 --sleep 2.5
+        run: |
+          python fetch_shutuba_with_history.py "${{ inputs.race_id }}" \
+            --history 3 \
+            --sleep 2.5 \
+            --limit-horses 2
 
       - name: Check generated JSON
         run: |
