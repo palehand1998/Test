@@ -223,5 +223,14 @@ class TestHorseHistoryStore(unittest.TestCase):
             self.assertEqual(loaded["has_table"], True)
             self.assertEqual(written["rows"], rows)
 
+    def test_missing_cache_returns_none(self):
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import HorseHistoryStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HorseHistoryStore(Path(tmp), ttl_hours=168)
+            self.assertIsNone(store.read("no_such_horse"))
+
 if __name__ == "__main__":
     unittest.main()
