@@ -170,5 +170,40 @@ class TestLoadShutuba(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_shutuba(path)
 
+class TestHorseHistoryStore(unittest.TestCase):
+    def test_fresh_cache_is_valid(self):
+        import tempfile
+        import time
+        from pathlib import Path
+        from fetch_horse_history import HorseHistoryStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HorseHistoryStore(Path(tmp), ttl_hours=168)
+
+            entry = {
+                "fetched_epoch": time.time(),
+                "rows": [],
+                "has_table": True,
+            }
+
+            self.assertTrue(store.is_fresh(entry))
+
+    def test_old_cache_is_invalid(self):
+        import tempfile
+        import time
+        from pathlib import Path
+        from fetch_horse_history import HorseHistoryStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HorseHistoryStore(Path(tmp), ttl_hours=168)
+
+            entry = {
+                "fetched_epoch": time.time() - (169 * 3600),
+                "rows": [],
+                "has_table": True,
+            }
+
+            self.assertFalse(store.is_fresh(entry))
+
 if __name__ == "__main__":
     unittest.main()
