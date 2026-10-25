@@ -2,8 +2,7 @@
 import unittest
 
 from fetch_shutuba import parse_shutuba
-from fetch_shutuba_with_history import ParseError
-
+from keiba_http import ParseError
 
 class TestFetchShutuba(unittest.TestCase):
     def test_parse_entry_table_without_history(self):
