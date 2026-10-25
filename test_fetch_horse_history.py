@@ -366,5 +366,18 @@ class TestArgumentValidation(unittest.TestCase):
 
         self.assertEqual(ctx.exception.code, 2)
 
+    def test_valid_race_id_passes_validation(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch("sys.stderr"):
+            result = main([
+                "202505021211",
+                "--in",
+                "file_that_does_not_exist.json",
+            ])
+
+        self.assertEqual(result, 1)
+
 if __name__ == "__main__":
     unittest.main()
