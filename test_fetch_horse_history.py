@@ -116,6 +116,29 @@ class TestAtomicWriteJson(unittest.TestCase):
                 {"version": 2},
             )
 
+class TestLoadShutuba(unittest.TestCase):
+    def test_missing_file(self):
+        from pathlib import Path
+        from fetch_horse_history import load_shutuba
+
+        with self.assertRaises(FileNotFoundError):
+            load_shutuba(Path("this_file_does_not_exist.json"))
+    def test_invalid_races(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import load_shutuba
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "shutuba.json"
+            path.write_text(
+                json.dumps({"races": []}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(ValueError):
+                load_shutuba(path)
+
 
 if __name__ == "__main__":
     unittest.main()
