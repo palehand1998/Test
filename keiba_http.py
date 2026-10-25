@@ -66,7 +66,11 @@ class Fetcher:
     def _raw_get(self, url: str):
         self._wait()
         try:
-            return self.s.get(url, timeout=self.timeout)
+            return self.s.get(
+                url,
+                timeout=self.timeout,
+                allow_redirects=False,
+            )
         finally:
             self._last = time.monotonic()
             self.requests_made += 1
