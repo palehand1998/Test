@@ -310,5 +310,31 @@ class TestArgumentValidation(unittest.TestCase):
 
         self.assertEqual(ctx.exception.code, 2)
 
+    def test_zero_history_is_rejected(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch("sys.stderr"):
+            with self.assertRaises(SystemExit) as ctx:
+                main([
+                    "202505021211",
+                    "--history", "0",
+                ])
+
+        self.assertEqual(ctx.exception.code, 2)
+
+    def test_negative_history_is_rejected(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch("sys.stderr"):
+            with self.assertRaises(SystemExit) as ctx:
+                main([
+                    "202505021211",
+                    "--history", "-1",
+                ])
+
+        self.assertEqual(ctx.exception.code, 2)
+
 if __name__ == "__main__":
     unittest.main()
