@@ -15,6 +15,7 @@ from typing import Any, Optional
 
 from bs4 import BeautifulSoup
 
+
 from fetch_shutuba_with_history import (
     DEFAULT_UA,
     Fetcher,
@@ -22,13 +23,15 @@ from fetch_shutuba_with_history import (
     ParseError,
     SHUTUBA_URL,
     HORSE_URL,
+)
+
+from keiba_common import (
     nfkc,
     now_iso,
     text_of,
     to_float,
     to_int,
 )
-
 
 log = logging.getLogger(__name__)
 
