@@ -2,15 +2,15 @@ import unittest
 
 from fetch_horse_history import select_history
 
-class TestSelectHistory(unittest.TestCase):
-def setUp(self):
-self.rows = [
-{“race_id”: “202505021211”, “date”: “2025-06-01”},
-{“race_id”: “202505021210”, “date”: “2025-05-25”},
-{“race_id”: “202505021209”, “date”: “2025-05-18”},
-{“race_id”: “202505021208”, “date”: “2025-05-11”},
-]
 
+class TestSelectHistory(unittest.TestCase):
+    def setUp(self):
+        self.rows = [
+            {"race_id": "202505021211", "date": "2025-06-01"},
+            {"race_id": "202505021210", "date": "2025-05-25"},
+            {"race_id": "202505021209", "date": "2025-05-18"},
+            {"race_id": "202505021208", "date": "2025-05-11"},
+        ]
 def test_excludes_target_race(self):
     result = select_history(
         self.rows,
