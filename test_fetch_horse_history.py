@@ -281,5 +281,34 @@ class TestExistingOutputValidation(unittest.TestCase):
             )
             mock_fetcher.assert_not_called()
 
+class TestArgumentValidation(unittest.TestCase):
+    def test_zero_cache_ttl_is_rejected(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch(
+            "sys.stderr",
+        ):
+            with self.assertRaises(SystemExit) as ctx:
+                main([
+                    "202505021211",
+                    "--cache-ttl-hours", "0",
+                ])
+
+        self.assertEqual(ctx.exception.code, 2)
+
+    def test_negative_cache_ttl_is_rejected(self):
+        from unittest.mock import patch
+        from fetch_horse_history import main
+
+        with patch("sys.stderr"):
+            with self.assertRaises(SystemExit) as ctx:
+                main([
+                    "202505021211",
+                    "--cache-ttl-hours", "-1",
+                ])
+
+        self.assertEqual(ctx.exception.code, 2)
+
 if __name__ == "__main__":
     unittest.main()
