@@ -247,6 +247,84 @@ def test_corrupt_cache_returns_none(self):
         )
         self.assertIsNone(store.read("1234567890"))
 
+class TestSuccessfulHistorySave(unittest.TestCase):
+    def test_history_is_saved_to_output_json(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        from fetch_horse_history import main
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            input_path = root / "shutuba.json"
+            output_path = root / "history.json"
+
+            input_path.write_text(
+                json.dumps({
+                    "races": {
+                        "202505021211": {
+                            "date": "2025-05-04",
+                            "horses": [
+                                {"horse_id": "1234567890"}
+                            ],
+                        }
+                    }
+                }),
+                encoding="utf-8",
+            )
+
+            def fake_fill_history(
+                fetcher,
+                cache,
+                horse,
+                race_id,
+                race_date,
+                n,
+            ):
+                horse.update(
+                    history_status="ok",
+                    history_fetched_at="2025-05-04T00:00:00",
+                    past_results=[
+                        {
+                            "race_id": "202505021210",
+                            "date": "2025-04-20",
+                            "finish": 1,
+                        }
+                    ],
+                )
+
+            with (
+                patch("fetch_horse_history.Fetcher"),
+                patch(
+                    "fetch_horse_history.fill_history",
+                    side_effect=fake_fill_history,
+                ),
+            ):
+                result = main([
+                    "202505021211",
+                    "--in", str(input_path),
+                    "--out", str(output_path),
+                    "--cache-dir", str(root / "cache"),
+                ])
+
+            self.assertEqual(result, 0)
+            self.assertTrue(output_path.exists())
+
+            saved = json.loads(
+                output_path.read_text(encoding="utf-8")
+            )
+            horse = saved["races"]["202505021211"]["horses"][
+                "1234567890"
+            ]
+
+            self.assertEqual(horse["history_status"], "ok")
+            self.assertEqual(
+                horse["past_results"][0]["race_id"],
+                "202505021210",
+            )
+
 class TestExistingOutputValidation(unittest.TestCase):
 def test_invalid_existing_output_is_not_overwritten(self):
 import json
