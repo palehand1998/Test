@@ -471,8 +471,16 @@ def main(argv: Optional[list[str]] = None) -> int:
 
         race_date = race_entry.get("date")
         previous_race = store["races"].get(rid, {})
-        results = dict(previous_race.get("horses", {}))
+        if not isinstance(previous_race, dict):
+            log.error("既存のレース履歴データの形式が不正です: %s", rid)
+            return 1
 
+        previous_horses = previous_race.get("horses", {})
+        if not isinstance(previous_horses, dict):
+            log.error("既存の馬履歴データの形式が不正です: %s", rid)
+            return 1
+
+        results = dict(previous_horses)
         for i, horse in enumerate(horses, 1):
             if not isinstance(horse, dict):
                 continue
