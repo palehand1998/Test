@@ -247,5 +247,39 @@ class TestHorseHistoryStore(unittest.TestCase):
 
             self.assertIsNone(store.read("1234567890"))
 
+class TestExistingOutputValidation(unittest.TestCase):
+    def test_invalid_existing_output_is_not_overwritten(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        from fetch_horse_history import main
+
+        with tempfile.TemporaryDirectory() as tmp:
+            input_path = Path(tmp) / "shutuba.json"
+            output_path = Path(tmp) / "history.json"
+
+            input_path.write_text(
+                json.dumps({"races": {}}),
+                encoding="utf-8",
+            )
+            original = '{"races": []}\n'
+            output_path.write_text(original, encoding="utf-8")
+
+            with patch("fetch_horse_history.Fetcher") as mock_fetcher:
+                result = main([
+                    "202505021211",
+                    "--in", str(input_path),
+                    "--out", str(output_path),
+                ])
+
+            self.assertEqual(result, 1)
+            self.assertEqual(
+                output_path.read_text(encoding="utf-8"),
+                original,
+            )
+            mock_fetcher.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()
