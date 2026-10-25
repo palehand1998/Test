@@ -129,89 +129,121 @@ class TestAtomicWriteJson(unittest.TestCase):
             {"version": 2},
         )
 
-class TestLoadShutuba(unittest.TestCase):
-def test_missing_file(self):
-from pathlib import Path
-from fetch_horse_history import load_shutuba
+    def test_preserves_previous_file_as_backup(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import atomic_write_json
 
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "history.json"
+            path.write_text('{"version": 1}\n', encoding="utf-8")
+            atomic_write_json(path, {"version": 2})
+            backup = path.with_name("history.json.bak")
+            self.assertTrue(backup.exists())
+            self.assertEqual(
+                json.loads(backup.read_text(encoding="utf-8")),
+                {"version": 1},
+            )
+            self.assertEqual(
+                json.loads(path.read_text(encoding="utf-8")),
+                {"version": 2},
+            )
+
+class TestLoadShutuba(unittest.TestCase):
+    def test_missing_file(self):
+        from pathlib import Path
+        from fetch_horse_history import load_shutuba
+        with self.assertRaises(FileNotFoundError):
+            load_shutuba(Path("this_file_does_not_exist.json"))
     with self.assertRaises(FileNotFoundError):
         load_shutuba(Path("this_file_does_not_exist.json"))
-def test_invalid_races(self):
-    import json
-    import tempfile
-    from pathlib import Path
-    from fetch_horse_history import load_shutuba
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "shutuba.json"
-        path.write_text(
-            json.dumps({"races": []}),
-            encoding="utf-8",
-        )
-        with self.assertRaises(ValueError):
-            load_shutuba(path)
-def test_invalid_json(self):
-    import tempfile
-    from pathlib import Path
-    from fetch_horse_history import load_shutuba
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "shutuba.json"
-        path.write_text(
-            "{invalid json",
-            encoding="utf-8",
-        )
-        with self.assertRaises(ValueError):
-            load_shutuba(path)
-def test_missing_races(self):
-    import json
-    import tempfile
-    from pathlib import Path
-    from fetch_horse_history import load_shutuba
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "shutuba.json"
-        path.write_text(
-            json.dumps({"other": "value"}),
-            encoding="utf-8",
-        )
-        with self.assertRaises(ValueError):
-            load_shutuba(path)
-def test_top_level_list_is_rejected(self):
-    import json
-    import tempfile
-    from pathlib import Path
-    from fetch_horse_history import load_shutuba
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "shutuba.json"
-        path.write_text(json.dumps([1, 2, 3]), encoding="utf-8")
-        with self.assertRaises(ValueError):
-            load_shutuba(path)
-def test_top_level_null_is_rejected(self):
-    import tempfile
-    from pathlib import Path
-    from fetch_horse_history import load_shutuba
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "shutuba.json"
-        path.write_text("null", encoding="utf-8")
-        with self.assertRaises(ValueError):
-            load_shutuba(path)
-def test_top_level_string_is_rejected(self):
-    import tempfile
-    from pathlib import Path
-    from fetch_horse_history import load_shutuba
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "shutuba.json"
-        path.write_text('"hello"', encoding="utf-8")
-        with self.assertRaises(ValueError):
-            load_shutuba(path)
-def test_top_level_number_is_rejected(self):
-    import tempfile
-    from pathlib import Path
-    from fetch_horse_history import load_shutuba
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "shutuba.json"
-        path.write_text("123", encoding="utf-8")
-        with self.assertRaises(ValueError):
-            load_shutuba(path)
+    def test_invalid_races(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import load_shutuba
 
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "shutuba.json"
+            path.write_text(
+                json.dumps({"races": []}),
+                encoding="utf-8",
+            )
+            with self.assertRaises(ValueError):
+                load_shutuba(path)
+
+    def test_invalid_json(self):
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import load_shutuba
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "shutuba.json"
+            path.write_text("{invalid json", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_shutuba(path)
+
+    def test_missing_races(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import load_shutuba
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "shutuba.json"
+            path.write_text(
+                json.dumps({"other": "value"}),
+                encoding="utf-8",
+            )
+            with self.assertRaises(ValueError):
+                load_shutuba(path)
+
+    def test_top_level_list_is_rejected(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import load_shutuba
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "shutuba.json"
+            path.write_text(json.dumps([1, 2, 3]), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_shutuba(path)
+
+    def test_top_level_null_is_rejected(self):
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import load_shutuba
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "shutuba.json"
+            path.write_text("null", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_shutuba(path)
+
+    def test_top_level_string_is_rejected(self):
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import load_shutuba
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "shutuba.json"
+            path.write_text('"hello"', encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_shutuba(path)
+
+    def test_top_level_number_is_rejected(self):
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import load_shutuba
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "shutuba.json"
+            path.write_text("123", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_shutuba(path)
+                
 class TestHorseHistoryStore(unittest.TestCase):
 def test_fresh_cache_is_valid(self):
 import tempfile
