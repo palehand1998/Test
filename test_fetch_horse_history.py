@@ -112,22 +112,6 @@ class TestAtomicWriteJson(unittest.TestCase):
             atomic_write_json(path, data, backup=False)
             loaded = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(loaded, data)
-    from pathlib import Path
-    from fetch_horse_history import atomic_write_json
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "history.json"
-        path.write_text('{"version": 1}\n', encoding="utf-8")
-        atomic_write_json(path, {"version": 2})
-        backup = path.with_name("history.json.bak")
-        self.assertTrue(backup.exists())
-        self.assertEqual(
-            json.loads(backup.read_text(encoding="utf-8")),
-            {"version": 1},
-        )
-        self.assertEqual(
-            json.loads(path.read_text(encoding="utf-8")),
-            {"version": 2},
-        )
 
     def test_preserves_previous_file_as_backup(self):
         import json
