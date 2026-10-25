@@ -205,5 +205,23 @@ class TestHorseHistoryStore(unittest.TestCase):
 
             self.assertFalse(store.is_fresh(entry))
 
+    def test_write_and_read_cache(self):
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import HorseHistoryStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = HorseHistoryStore(Path(tmp), ttl_hours=168)
+            rows = [
+                {"race_id": "202505021210", "date": "2025-05-25"}
+            ]
+
+            written = store.write("1234567890", rows)
+            loaded = store.read("1234567890")
+
+            self.assertEqual(loaded["rows"], rows)
+            self.assertEqual(loaded["has_table"], True)
+            self.assertEqual(written["rows"], rows)
+
 if __name__ == "__main__":
     unittest.main()
