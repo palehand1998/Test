@@ -553,5 +553,5 @@ def test_valid_race_id_passes_validation(self):
         ])
     self.assertEqual(result, 1)
 
-if name == “main”:
+if __name__ == "__main__":
 unittest.main()
