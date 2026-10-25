@@ -16,7 +16,7 @@ from typing import Any, Optional
 from bs4 import BeautifulSoup
 
 
-from fetch_shutuba_with_history import (
+from keiba_http import (
     DEFAULT_UA,
     Fetcher,
     FetchError,
