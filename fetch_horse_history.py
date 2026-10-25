@@ -444,6 +444,15 @@ def main(argv: Optional[list[str]] = None) -> int:
                 "既存の履歴JSONを読み込めません。保存を中止します"
             )
             return 1
+
+    for rid in args.race_ids:
+        race_entry = shutuba["races"].get(rid)
+        if isinstance(race_entry, dict):
+            horses = race_entry.get("horses", [])
+            if not isinstance(horses, list):
+                log.error("出走馬データの形式が不正です: %s", rid)
+                return 1
+
     fetcher = Fetcher(
         args.sleep,
         args.user_agent,
