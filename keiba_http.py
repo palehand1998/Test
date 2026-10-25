@@ -71,6 +71,7 @@ class Fetcher:
             self._last = time.monotonic()
             self.requests_made += 1
 
+
     def _allowed(self, url: str) -> bool:
         if not self.respect_robots:
             return True
@@ -81,14 +82,21 @@ class Fetcher:
         if rp is None:
             rp = robotparser.RobotFileParser()
             try:
-                response = self._raw_get(f"https://{host}/robots.txt")
-                if response.status_code == 200:
-                    rp.parse(response.text.splitlines())
-                else:
-                    rp.allow_all = True
+                response = self._raw_get(
+                    f"https://{host}/robots.txt"
+                )
+                if response.status_code != 200:
+                    raise FetchError(
+                        f"robots.txt を確認できません: "
+                        f"HTTP {response.status_code}"
+                    )
+
+                rp.parse(response.text.splitlines())
+
             except requests.RequestException as exc:
-                log.warning("robots.txt の取得に失敗: %s", exc)
-                rp.allow_all = True
+                raise FetchError(
+                    f"robots.txt の取得に失敗したため中止: {exc}"
+                ) from exc
 
             self._robots[host] = rp
 
