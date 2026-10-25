@@ -33,3 +33,6 @@ jobs:
 
       - name: Run HTTP utility tests
         run: python -m unittest -v test_keiba_http.py
+
+      - name: Run horse history tests
+        run: python -m unittest -v test_fetch_horse_history.py
