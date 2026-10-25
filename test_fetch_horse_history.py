@@ -183,6 +183,18 @@ class TestLoadShutuba(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_shutuba(path)
 
+    def test_top_level_null_is_rejected(self):
+        import tempfile
+        from pathlib import Path
+        from fetch_horse_history import load_shutuba
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "shutuba.json"
+            path.write_text("null", encoding="utf-8")
+
+            with self.assertRaises(ValueError):
+                load_shutuba(path)
+
 class TestHorseHistoryStore(unittest.TestCase):
     def test_fresh_cache_is_valid(self):
         import tempfile
